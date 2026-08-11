@@ -1,67 +1,108 @@
 # Decision Log
 
-File này ghi lại các quyết định quan trọng trong quá trình xây dựng project
-Predicting Product Sales.
+This document records important decisions made during the development of the Product Sales Prediction project.
+
+---
 
 ## Decision 001 - Problem Type
 
 ### Decision
-Xác định bài toán của nhóm là Supervised Learning dạng Regression.
+
+The project is defined as a Supervised Learning Regression problem.
 
 ### Reason
-Target `sales_next_month` là một biến số liên tục và mục tiêu của nhóm là dự đoán doanh số tháng kế tiếp.
+
+The target variable `sales_next_month` is a continuous numerical value, and the objective is to predict the sales value for the following month.
 
 ### Impact
-Nhóm sử dụng các thuật toán Regression và các metrics phù hợp như MAE, MSE, RMSE và R².
+
+Regression models and regression evaluation metrics will be used throughout the project.
 
 ---
 
 ## Decision 002 - Dataset Aggregation
 
 ### Decision
-Dữ liệu được aggregate theo `product_category × month`.
+
+The dataset is aggregated at the `product_category × month` level.
 
 ### Reason
-Cách aggregate này phù hợp với mục tiêu dự đoán doanh số của từng product category trong tháng kế tiếp.
+
+This aggregation is appropriate for predicting the sales of each product category in the following month.
 
 ### Impact
-Dataset sau feature engineering sẽ được sử dụng để xây dựng target `sales_next_month`.
+
+The aggregated dataset will be used to construct features and the target variable `sales_next_month`.
 
 ---
 
-## Decision 003 - Temporal Split
+## Decision 003 - Temporal Data Split
 
 ### Decision
-Dữ liệu được chia Train / Validation / Test theo thứ tự thời gian.
+
+The dataset is divided into training, validation, and test sets according to chronological order.
 
 ### Reason
-Bài toán dự đoán doanh số tháng kế tiếp có tính chất dự báo theo thời gian. Không được sử dụng dữ liệu tương lai để huấn luyện hoặc lựa chọn model.
+
+The project is a time-dependent prediction problem. Future information must not be used to train the model or construct historical features.
 
 ### Impact
-Validation được dùng để lựa chọn model và hyperparameters. Test set chỉ được sử dụng cho đánh giá cuối cùng.
+
+The validation set is used for model and hyperparameter selection, while the test set is reserved for final evaluation.
 
 ---
 
-## Decision 004 - Model Selection
+## Decision 004 - Machine Learning Models
 
 ### Decision
-Nhóm sử dụng Mean Baseline, Linear Regression và Decision Tree Regression.
+
+The project uses:
+
+1. Mean Baseline
+2. Linear Regression from Scratch
+3. Decision Tree Regression from Scratch
 
 ### Reason
-Các model này được yêu cầu trong phạm vi bài lab và cho phép nhóm so sánh baseline với các mô hình Regression.
+
+These models provide a baseline and two required regression approaches for comparison.
 
 ### Impact
-Các model sẽ được đánh giá bằng cùng một bộ metrics để so sánh.
+
+All models will be evaluated using the same validation metrics.
 
 ---
 
 ## Decision 005 - Evaluation Metrics
 
 ### Decision
-Sử dụng MAE, MSE, RMSE và R² để đánh giá model.
+
+The project uses:
+
+- MAE
+- MSE
+- RMSE
+- R²
 
 ### Reason
-Các metrics này phù hợp với bài toán Regression và cho phép đánh giá sai số cũng như mức độ giải thích của model.
+
+These metrics are appropriate for evaluating regression models and provide different views of prediction error and model performance.
 
 ### Impact
-Các validation metrics được ghi vào experiment log để lựa chọn best run.
+
+The validation metrics will be recorded in the experiment log and used to compare different runs.
+
+---
+
+## Decision 006 - Test Set Usage
+
+### Decision
+
+The test set will only be used for final evaluation.
+
+### Reason
+
+Using the test set during model selection would introduce evaluation bias and violate the separation between model selection and final evaluation.
+
+### Impact
+
+The best model must be selected using validation performance before the final test evaluation is performed.
