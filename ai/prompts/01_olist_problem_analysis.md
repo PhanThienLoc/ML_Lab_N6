@@ -2,44 +2,50 @@
 
 ## Context
 
-Bài lab Predicting Product Sales sử dụng Brazilian E-Commerce Public Dataset by Olist.
+The project uses the Brazilian E-Commerce Public Dataset by Olist.
 
-Các file dữ liệu chính:
+The main data files are:
 
-- olist_orders_dataset.csv
-- olist_order_items_dataset.csv
-- olist_products_dataset.csv
-- product_category_name_translation.csv
+- `olist_orders_dataset.csv`
+- `olist_order_items_dataset.csv`
+- `olist_products_dataset.csv`
+- `product_category_name_translation.csv`
 
 ## Goal
 
-Xây dựng dataset theo product_category × month để dự đoán sales của tháng kế tiếp.
+Build a dataset at the `product_category × month` level to predict sales for the following month.
+
+The target variable is:
+
+`sales_next_month`
 
 ## Task
 
-Phân tích:
+Analyze the following aspects:
 
-1. Join plan giữa các bảng.
-2. Cleaning rules.
-3. Monthly aggregation.
-4. Target definition.
-5. Feature engineering.
-6. Các nguy cơ data leakage.
+1. Join plan between the datasets.
+2. Join keys and cardinality.
+3. Data cleaning rules.
+4. Monthly aggregation strategy.
+5. Target definition.
+6. Feature engineering strategy.
+7. Potential data leakage risks.
 
 ## Constraints
 
-- Không tạo feature không tồn tại trong source hoặc không có cách tính hợp lệ từ source.
-- Không sử dụng dữ liệu tương lai.
-- Phải nêu join keys và cardinality.
-- Không sử dụng Machine Learning library cho phần thuật toán from scratch.
-- Chưa viết code khi đang ở bước phân tích.
+- Do not create features that cannot be derived from the source data.
+- Do not use future information.
+- Clearly identify join keys and cardinality.
+- Do not use pre-built Machine Learning estimators for the required from-scratch models.
+- Complete the analysis before writing implementation code.
 
 ## Expected Output
 
-AI cần trả về:
+The analysis should provide:
 
 1. Join plan.
 2. Cleaning rules.
-3. Aggregation và target.
-4. Feature list.
-5. Leakage risks.
+3. Aggregation strategy.
+4. Target definition.
+5. Feature list.
+6. Potential data leakage risks.
