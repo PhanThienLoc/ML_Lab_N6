@@ -1,108 +1,77 @@
-# Decision Log
+# Nhật ký quyết định
 
-This document records important decisions made during the development of the Product Sales Prediction project.
+## Decision 001 - Loại bài toán
 
----
+**Quyết định:** Supervised Learning Regression.
+**Lý do:** `sales_next_month` là biến mục tiêu dạng số (numerical/count), nên bài lab được mô hình hóa bằng supervised regression.
+**Tác động:** Dùng regression model và regression metric.
 
-## Decision 001 - Problem Type
+## Decision 002 - Mức tổng hợp
 
-### Decision
+**Quyết định:** `product_category x month`.
+**Lý do:** Phù hợp dự đoán doanh số category tháng kế tiếp.
+**Tác động:** Đây là đơn vị của processed dataset.
 
-The project is defined as a Supervised Learning Regression problem.
+## Decision 003 - Chia dữ liệu theo thời gian
 
-### Reason
+**Quyết định:** Train, validation, test theo thứ tự thời gian.
+**Lý do:** Forecasting không được dùng tương lai.
+**Tác động:** Validation chọn model; test chỉ đánh giá cuối.
 
-The target variable `sales_next_month` is a continuous numerical value, and the objective is to predict the sales value for the following month.
+## Decision 004 - Model
 
-### Impact
+**Quyết định:** Mean Baseline, Linear Regression Scratch, Decision Tree Scratch.
+**Lý do:** Đúng yêu cầu môn học.
+**Tác động:** TV2 cài đặt; TV3 đánh giá cùng split.
 
-Regression models and regression evaluation metrics will be used throughout the project.
+## Decision 005 - Metric
 
----
+**Quyết định:** MAE, MSE, RMSE và R².
+**Lý do:** Phù hợp regression.
+**Tác động:** TV3 ghi metric vào experiment log.
 
-## Decision 002 - Dataset Aggregation
+## Decision 006 - Cách dùng test set
 
-### Decision
+**Quyết định:** Không dùng test để chọn model/hyperparameter.
+**Lý do:** Tránh evaluation bias.
+**Tác động:** Chốt best run bằng validation trước final test.
 
-The dataset is aggregated at the `product_category × month` level.
+## Decision 007 - Chính sách completed sales
 
-### Reason
+**Quyết định:** TV1 chỉ tổng hợp order `delivered`.
+**Lý do:** Đây là proxy rõ ràng cho sales đã hoàn tất; cancelled/unavailable không được làm tăng target.
+**Bằng chứng:** Pipeline ghi status distribution và status include/exclude vào report/log.
+**Tác động:** Đổi policy phải chạy lại pipeline và experiment.
 
-This aggregation is appropriate for predicting the sales of each product category in the following month.
+## Decision 008 - Calendar panel trước shift
 
-### Impact
+**Quyết định:** Hoàn tất grid category x global observed month trước lag/target.
+**Lý do:** Tháng không có transaction nghĩa là sales=0; không được để shift nhảy qua tháng.
+**Tác động:** Lag/target chỉ đúng tháng lịch liền kề.
 
-The aggregated dataset will be used to construct features and the target variable `sales_next_month`.
+## Decision 009 - Missing transaction attribute
 
----
+**Quyết định:** Zero-sales gap chỉ forward-fill từ quá khứ cùng category; gap đầu kỳ dùng train median.
+**Lý do:** Future fill gây leakage; fallback train-only tái lập được.
+**Tác động:** Matrix hữu hạn mà không fit trên validation/test.
 
-## Decision 003 - Temporal Data Split
+## Decision 010 - Đơn vị split
 
-### Decision
+**Quyết định:** Split toàn bộ `target_month` theo thời gian.
+**Lý do:** Không được trộn cùng forecast period qua các split.
+**Tác động:** Mọi experiment dùng boundary trong metadata.
 
-The dataset is divided into training, validation, and test sets according to chronological order.
+## Chiến lược prompt TV1
 
-### Reason
+MVP TV1 ban đầu dùng một master prompt, được giữ tại `ai/prompts/00_tv1_master_prompt.md`. Sau khi xác nhận yêu cầu cần AI prompt cho từng giai đoạn, code hiện có được tách thành prompt scope nhỏ và **chạy thật** để inspect, verify, test và chỉ refine khi cần; đây không phải lịch sử prompt giả.
 
-The project is a time-dependent prediction problem. Future information must not be used to train the model or construct historical features.
+- 01: audit raw data
+- 02: join và cleaning
+- 03: category-month aggregation
+- 04: temporal feature/target
+- 05: temporal split/preprocessing
+- 06: test
+- 07: report/handoff
+- 08: final audit
 
-### Impact
-
-The validation set is used for model and hyperparameter selection, while the test set is reserved for final evaluation.
-
----
-
-## Decision 004 - Machine Learning Models
-
-### Decision
-
-The project uses:
-
-1. Mean Baseline
-2. Linear Regression from Scratch
-3. Decision Tree Regression from Scratch
-
-### Reason
-
-These models provide a baseline and two required regression approaches for comparison.
-
-### Impact
-
-All models will be evaluated using the same validation metrics.
-
----
-
-## Decision 005 - Evaluation Metrics
-
-### Decision
-
-The project uses:
-
-- MAE
-- MSE
-- RMSE
-- R²
-
-### Reason
-
-These metrics are appropriate for evaluating regression models and provide different views of prediction error and model performance.
-
-### Impact
-
-The validation metrics will be recorded in the experiment log and used to compare different runs.
-
----
-
-## Decision 006 - Test Set Usage
-
-### Decision
-
-The test set will only be used for final evaluation.
-
-### Reason
-
-Using the test set during model selection would introduce evaluation bias and violate the separation between model selection and final evaluation.
-
-### Impact
-
-The best model must be selected using validation performance before the final test evaluation is performed.
+Bằng chứng thực thi nằm trong `ai/results/`.

@@ -1,0 +1,7 @@
+# Olist raw data is downloaded or supplied locally, never committed.
+data/raw/*.csv
+
+# Python cache and test output.
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -1,0 +1,14 @@
+TV1 data-quality log (generated; no experiment metrics)
+raw files loaded: olist_orders_dataset.csv, olist_order_items_dataset.csv, olist_products_dataset.csv, product_category_name_translation.csv
+raw rows: orders=99441, order_items=112650, products=32951, category_translation=71
+purchase date range: 2016-09-04T21:15:19 to 2018-10-17T17:30:18
+invalid/missing purchase timestamps: 0
+included order statuses: delivered
+joined item rows: 110197
+categories: 74; calendar months: 24; category-month rows: 1776
+modeling rows removed for insufficient history or future target: 296
+modeling rows: 1480
+target-month splits: train=2017-01..2018-02 (1036 rows); validation=2018-03..2018-05 (222 rows); test=2018-06..2018-08 (222 rows)
+preprocessing: category encoder, imputation medians, means, and stds fitted only on train
+validation checks passed: temporal separation, target exclusion, aligned schemas, finite matrices, raw immutability
+manual target-alignment samples: two deterministic category sequences recorded in reports/data_analysis.md
