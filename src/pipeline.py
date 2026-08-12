@@ -16,6 +16,7 @@ from src.data_loader import (
     load_raw_data,
     snapshot_raw_files,
 )
+from src.eda import generate_eda_figures
 from src.features import (
     apply_past_only_forward_fill,
     available_feature_columns,
@@ -90,9 +91,11 @@ def _write_data_quality_log(path: Path, payload: dict[str, Any]) -> None:
         ),
         f"purchase date range: {raw['purchase_timestamp']['min']} to {raw['purchase_timestamp']['max']}",
         f"invalid/missing purchase timestamps: {raw['purchase_timestamp']['invalid_or_missing']}",
-        f"included order statuses: {', '.join(built['included_statuses'])}",
+        f"sales event definition: {built['sales_event_definition']}",
+        f"order-status policy: {built['order_status_policy']}",
         f"joined item rows: {built['joined_item_rows']}",
         f"categories: {built['categories']}; calendar months: {built['calendar_months']}; category-month rows: {built['category_month_rows']}",
+        f"category active-window rule: {built['category_active_window']['start_rule']}",
         f"modeling rows removed for insufficient history or future target: {filtered['rows_removed_missing_history_or_target']}",
         f"modeling rows: {filtered['rows_after_modeling_filter']}",
         "target-month splits: " + "; ".join(
@@ -100,6 +103,7 @@ def _write_data_quality_log(path: Path, payload: dict[str, Any]) -> None:
             for name, item in split.items()
         ),
         "preprocessing: category encoder, imputation medians, means, and stds fitted only on train",
+        "EDA figures: " + ", ".join(payload["metadata"]["eda_summary"]["figures"]),
         "validation checks passed: temporal separation, target exclusion, aligned schemas, finite matrices, raw immutability",
         "manual target-alignment samples: two deterministic category sequences recorded in reports/data_analysis.md",
     ]
@@ -152,6 +156,7 @@ def _write_reports(report_dir: Path, payload: dict[str, Any]) -> None:
         [name, item["non_missing"], item["min"], item["median"], item["p99"], item["max"]]
         for name, item in metadata["outlier_summary"].items()
     ]
+    eda = metadata["eda_summary"]
     manual_samples = metadata["manual_sanity_samples"]
     manual_sections = []
     for category, rows in manual_samples.items():
@@ -168,42 +173,57 @@ def _write_reports(report_dir: Path, payload: dict[str, Any]) -> None:
         for record in built["join_audit"]
     )
 
-    analysis = f"""# TV1 Data Analysis - Olist Product Sales
+    analysis = f"""# Phân tích dữ liệu TV1 - Olist Product Sales
 
-This report is generated from the raw CSV files by `python -m src.run_data_pipeline`; all counts below are observed values, not examples.
+Báo cáo được tạo trực tiếp từ raw CSV bằng `python -m src.run_data_pipeline`; mọi số liệu dưới đây là quan sát thực tế, không phải ví dụ.
 
-## Raw inputs
+## Dữ liệu đầu vào
 
 {_markdown_table(['table', 'rows', 'columns', 'duplicate rows'], raw_rows)}
 
-Purchase timestamps range from **{raw['purchase_timestamp']['min']}** to **{raw['purchase_timestamp']['max']}**. Invalid or missing purchase timestamps: **{raw['purchase_timestamp']['invalid_or_missing']}**.
+Khoảng purchase timestamp: **{raw['purchase_timestamp']['min']}** đến **{raw['purchase_timestamp']['max']}**. Timestamp không hợp lệ/thiếu: **{raw['purchase_timestamp']['invalid_or_missing']}**.
 
-Order-status distribution: `{json.dumps(raw['order_status_distribution'], ensure_ascii=False, sort_keys=True)}`.
+Phân bố order status: `{json.dumps(raw['order_status_distribution'], ensure_ascii=False, sort_keys=True)}`.
 
-Full observed dtypes and per-column missing-value counts are preserved in `data/processed/preprocessing_metadata.json` under `raw_audit`; the pipeline never invents or imputes raw-source values.
+Toàn bộ dtype và missing count được lưu trong `data/processed/preprocessing_metadata.json` tại `raw_audit`; pipeline không tự tạo hoặc impute giá trị raw.
 
-## Cleaning and completed-sales policy
+## Làm sạch và định nghĩa demand tại cutoff
 
-- Included statuses: `{', '.join(built['included_statuses'])}`. The pipeline uses delivered orders as the defensible completed-sales proxy.
-- Excluded statuses observed in the source: `{', '.join(built['excluded_statuses']) or 'none'}`.
-- Records with an invalid purchase timestamp are excluded before the monthly aggregation.
-- An English category is used where translated. Otherwise the source category is retained; if both are absent, the explicit label `unknown_category` is used.
-- Price, freight, and product-average attributes are not backfilled from future months: zero-sales month gaps use only an in-category forward fill, then a training-only median during preprocessing.
-- No outlier is deleted or capped. The generated descriptive inspection is recorded in metadata under `outlier_summary`.
+- Sự kiện demand: `{built['sales_event_definition']}`
+- Chính sách order status: `{built['order_status_policy']}` Điều này chặn hindsight: final status ghi nhận sau cutoff không thể chọn purchase event của tháng trước.
+- Record có purchase timestamp không hợp lệ bị loại trước aggregate.
+- Category dùng bản dịch tiếng Anh nếu có; nếu không dùng source category; nếu vẫn thiếu dùng `unknown_category`.
+- Price, freight và product attribute không backfill từ tương lai: zero-demand gap chỉ forward-fill quá khứ cùng category, sau đó dùng train median khi preprocessing.
+- Không outlier nào bị xóa/cắt. Thống kê kiểm tra nằm trong metadata `outlier_summary`.
 
-## Join audit
+## Kiểm tra join
 
 {_markdown_table(['left', 'right', 'key', 'expected cardinality', 'left rows', 'rows after', 'unmatched-left rate'], join_rows)}
 
-`pandas.merge(validate=...)` enforces every listed cardinality, so an unexpected many-to-many multiplication fails the pipeline rather than silently inflating sales.
+`pandas.merge(validate=...)` ép từng cardinality đã khai báo; many-to-many ngoài dự kiến sẽ làm pipeline fail thay vì làm phồng demand im lặng.
 
-## Category-month representation and target
+## Category-month và target
 
-One row represents one `product_category × feature_month`. The pipeline creates a complete global calendar grid across observed categories and months; a missing transaction month therefore has `sales_current = 0` rather than a skipped lag.
+Một dòng là một `product_category × feature_month`. Lịch của mỗi category bắt đầu từ tháng purchase đầu tiên quan sát được của chính category đó và kéo dài đến tháng quan sát cuối toàn cục. Tháng thiếu sau mốc đó có `sales_current = 0`; tháng trước lần quan sát đầu tiên không bị bịa thành zero-demand history.
 
-The target is **`sales_next_month`**, the category's item quantity in the immediately following calendar month. It is constructed only after grid completion using a one-row forward group shift. Rows lacking three historical sales lags or a future target are excluded from the model-ready table.
+Target **`sales_next_month`** là purchase-time order-item demand của category trong tháng lịch kế tiếp. Target được tạo sau active-window grid bằng forward group shift một dòng. Dòng thiếu ba sales lag hoặc future target bị loại khỏi model-ready table.
 
-## Final feature specification
+## EDA trực quan
+
+Ba biểu đồ dưới đây được sinh lại tự động từ active-window panel ở mỗi pipeline run, không phải ảnh tạo thủ công.
+
+![Tổng purchase-time demand theo tháng](figures/01_monthly_purchase_demand.png)
+
+![Top 10 category theo demand](figures/02_top_categories_demand.png)
+
+![Category active có demand dương và zero-demand](figures/03_zero_demand_by_month.png)
+
+- Demand tháng cao nhất: **{eda['monthly_demand_peak']['month']}** với **{eda['monthly_demand_peak']['order_item_demand']}** order-item.
+- Category có tổng demand cao nhất: **{eda['top_category_by_demand']['product_category']}** với **{eda['top_category_by_demand']['order_item_demand']}** order-item.
+- Active category-month có zero-demand: **{eda['zero_demand_category_months']['rows']}** dòng ({eda['zero_demand_category_months']['rate']:.2%}).
+- Khoảng raw data bắt đầu ở ngày **{str(raw['purchase_timestamp']['min'])[:10]}** và kết thúc ở ngày **{str(raw['purchase_timestamp']['max'])[:10]}**; tháng đầu/cuối là tháng chưa đủ nên không nên so sánh trực tiếp với tháng hoàn chỉnh.
+
+## Đặc tả feature cuối
 
 {_markdown_table(['feature', 'formula', 'available at', 'leakage assessment'], feature_rows)}
 
@@ -213,59 +233,63 @@ The target is **`sales_next_month`**, the category's item quantity in the immedi
 
 All rows for a target month are placed in one split. The assertions require train < validation < test with no target-month overlap.
 
-## Outlier inspection
+## Kiểm tra outlier
 
 {_markdown_table(['field', 'non-missing', 'min', 'median', 'p99', 'max'], outlier_rows)}
 
-Large values are retained unless an impossible value is found. This is an inspection report, not a clipping rule.
+Giá trị lớn được giữ lại trừ khi không hợp lệ. Đây là báo cáo kiểm tra, không phải quy tắc clipping.
 
-## Manual lag/target sanity samples
+## Mẫu kiểm tra lag/target thủ công
 
-The following two chronological samples are generated from the model-ready data. In each row, `sales_next_month` is the next line's `sales_current` for the same category.
+Hai mẫu theo thời gian dưới đây được tạo từ model-ready data. Trong mỗi mẫu, `sales_next_month` là `sales_current` của tháng kế tiếp trong cùng category.
 
 {chr(10).join(manual_sections)}
 
-## Leakage checks
+## Kiểm tra leakage
 
-- `sales_next_month`, `target_month`, and date keys are excluded from every model matrix.
-- The lag/target assertion recalculates shifts from the completed panel at every pipeline run.
-- Preprocessor parameters are fitted from the train split only and persisted in metadata.
-- Train, validation, and test have identical feature order and finite numeric values.
+- `sales_next_month`, `target_month` và date keys bị loại khỏi mọi model matrix.
+- Category grid bắt đầu tại first observation, nên category chỉ xuất hiện ở validation/test không bị chèn vào train dưới dạng synthetic zero row.
+- Lag/target assertion tính lại shift từ active-window panel ở mỗi pipeline run.
+- Preprocessor chỉ fit từ train và được lưu trong metadata.
+- Train, validation và test có feature order giống nhau cùng giá trị số hữu hạn.
 
-## Limitations and next work
+## Giới hạn và phần việc tiếp theo
 
-- The target is sales quantity (order-item count), not revenue or customer lifetime value.
-- The grid uses all observed months for all observed categories; it does not infer a product-category launch date.
-- Olist lacks direct age, gender, campaign, and ad-spend fields, so none are fabricated.
-- TV2 owns model algorithms; TV3 owns experiment tracking, model selection, and final metrics.
+- Target là purchase-time demand quantity (order-item count), không phải revenue, delivered sales hoặc customer lifetime value.
+- First observed purchase month là active-window boundary trong dữ liệu, không chứng minh đây là ngày launch thật của category.
+- Olist không có age, gender, campaign hoặc ad-spend trực tiếp; không field nào bị bịa.
+- TV2 phụ trách model algorithm; TV3 phụ trách experiment tracking, model selection và final metric.
 """
-    handoff = f"""# TV1 Handoff - Leakage-safe Olist arrays
+    handoff = f"""# Bàn giao TV1 - Leakage-safe Olist arrays
 
-## Problem representation
+## Biểu diễn bài toán
 
-Each model row is one `product_category × feature_month`. At the end of feature month *t*, it predicts sales quantity for *t+1*.
+Mỗi model row là một `product_category × feature_month`. Ở cuối feature month *t*, nó dự đoán purchase-time item demand cho *t+1*.
 
 ## Target
 
-`{metadata['target_name']}` = category order-item count in the next calendar month. It is not included in `X`.
+`{metadata['target_name']}` = purchase-time order-item demand của category trong tháng lịch kế tiếp. Target không nằm trong `X`.
 
-## Raw inputs, joins, and cleaning
+## Raw input, join và làm sạch
 
 Raw MVP files: `{', '.join(metadata['raw_files'])}`.
 
 {handoff_join_lines}
 
-- Completed-sales policy: include `{', '.join(built['included_statuses'])}` orders; exclude `{', '.join(built['excluded_statuses'])}`.
-- Category policy: use English translation when available, source category as fallback, then explicit `unknown_category`.
-- Invalid purchase timestamps are excluded before aggregation. Negative price/freight values are audited, not silently corrected.
+- Chính sách sales event: `{built['sales_event_definition']}`
+- Chính sách order status: `{built['order_status_policy']}`
+- Category dùng English translation nếu có, source category nếu không, sau cùng là `unknown_category`.
+- Purchase timestamp không hợp lệ bị loại trước aggregate. Giá trị price/freight âm chỉ được audit, không tự sửa.
 
-## Forecast cutoff and leakage guarantees
+## Forecast cutoff và bảo vệ leakage
 
-- Sales lags are explicit history shifts after a complete monthly calendar grid.
-- `rolling_sales_mean_3` uses *t*, *t-1*, and *t-2* only.
-- Split allocation uses `target_month`, not random rows.
-- One-hot categories, missing-value medians, means, and standard deviations are fitted on train only.
-- Validation/test categories not seen in train are accepted and encoded as all zeros.
+- Grid mỗi category bắt đầu ở first observed purchase month; không pre-history nào bị bịa.
+- Demand được gán tại `order_purchase_timestamp`; final order status sau cutoff không được dùng.
+- Sales lag là history shift tường minh sau monthly calendar grid.
+- `rolling_sales_mean_3` chỉ dùng *t*, *t-1* và *t-2*.
+- Split dựa trên `target_month`, không random row.
+- One-hot category, missing-value median, mean và standard deviation chỉ fit trên train.
+- Category ở validation/test chưa thấy trong train được chấp nhận và mã hóa all-zero.
 
 ## Ordered model feature schema
 
@@ -275,7 +299,7 @@ Raw MVP files: `{', '.join(metadata['raw_files'])}`.
 
 {_markdown_table(['split', 'X shape', 'y dtype', 'target-month range'], [[name, f"{item['x_rows']} × {item['x_columns']}", item['y_dtype'], f"{split[name]['target_month_start']}..{split[name]['target_month_end']}"] for name, item in metadata['handoff_shapes'].items()])}
 
-## How to call
+## Cách gọi
 
 ```python
 from src.pipeline import prepare_data
@@ -287,18 +311,19 @@ X_test, y_test = prepared['X_test'], prepared['y_test']
 metadata = prepared['metadata']
 ```
 
-`X_*` are pandas DataFrames with identical ordered columns and finite floats. `y_*` are float pandas Series. TV2 should convert with `.to_numpy()` only if its implementation requires NumPy arrays. TV3 should read split periods and feature names from `metadata`, and must not refit preprocessing.
+`X_*` là pandas DataFrame có thứ tự cột giống nhau và finite float. `y_*` là pandas Series float. TV2 chỉ đổi `.to_numpy()` khi implementation cần NumPy; TV3 đọc split period/feature name từ `metadata` và không fit preprocessing lại.
 
-## Preprocessing and verification
+## Preprocessing và xác minh
 
-- One-hot category levels are learned only from train; unknown later categories become an all-zero category vector.
-- Missing numerical values use train medians. Numerical means and standard deviations are fitted only from train, then reused unchanged for validation/test.
-- The reproducible preprocessing state is in `data/processed/preprocessing_metadata.json`.
-- Current scoped-prompt verification evidence is in `ai/results/`; run `python -m pytest -q` before any handoff revision.
+- One-hot category level chỉ học từ train; category xuất hiện sau đó thành all-zero vector.
+- Missing numerical value dùng train median. Mean/std chỉ fit từ train, sau đó tái sử dụng bất biến cho validation/test.
+- Preprocessing state tái lập được ở `data/processed/preprocessing_metadata.json`.
+- Ba EDA PNG được pipeline sinh lại tại `reports/figures/` và được nhúng trong `reports/data_analysis.md`; không có biểu đồ được chỉnh tay.
+- Evidence scoped-prompt nằm trong `ai/results/`; chạy `python -m pytest -q` trước mọi handoff revision.
 
-## Known limitations
+## Giới hạn đã biết
 
-The artifact is a category-level monthly forecast, not an SKU forecast. Price/freight/product means are unavailable in zero-sales months; the explicit past-only/train-only fallback is described in `data_analysis.md` and metadata.
+Artifact là forecast category theo tháng, không phải SKU. Price/freight/product mean không có ở zero-demand month; fallback past-only/train-only được mô tả trong `data_analysis.md` và metadata. First observed purchase month không khẳng định đây là ngày launch thật của category.
 """
     (report_dir / "data_analysis.md").write_text(analysis, encoding="utf-8")
     (report_dir / "TV1_HANDOFF.md").write_text(handoff, encoding="utf-8")
@@ -325,6 +350,7 @@ def prepare_data(
     raw_data = load_raw_data(raw_dir)
     raw_audit = audit_raw_data(raw_data)
     panel, build_evidence = build_category_month_dataset(raw_data)
+    eda_summary = generate_eda_figures(panel, report_dir / "figures")
     features = create_features(panel)
     assert_feature_alignment(features)
     features = apply_past_only_forward_fill(features)
@@ -355,7 +381,10 @@ def prepare_data(
         "aggregation_level": "product_category_month",
         "forecast_horizon": "next_calendar_month",
         "raw_files": list(REQUIRED_RAW_FILES.values()),
-        "sales_definition": "Count of order-item records from delivered orders.",
+        "sales_definition": (
+            "Count of order-item demand at order_purchase_timestamp; all final order statuses are included."
+        ),
+        "sales_event_timestamp": "order_purchase_timestamp",
         "feature_names": list(preprocessor.feature_names),
         "source_numerical_features": numerical_columns,
         "source_categorical_features": categorical_columns,
@@ -367,14 +396,19 @@ def prepare_data(
         "handoff_shapes": handoff_shapes,
         "grid_and_target_filter": filter_evidence,
         "outlier_summary": _outlier_summary(modeling_rows),
-        "static_product_features_present": build_evidence["static_product_features_present"],
+        "eda_summary": eda_summary,
+        "product_attribute_features_present": build_evidence["product_attribute_features_present"],
         "raw_immutability_sha256": raw_snapshot.hashes,
         "raw_audit": raw_audit,
         "join_audit": build_evidence["join_audit"],
-        "completed_sales_policy": {
-            "included_statuses": build_evidence["included_statuses"],
-            "excluded_statuses": build_evidence["excluded_statuses"],
+        "sales_event_policy": {
+            "definition": build_evidence["sales_event_definition"],
+            "order_status_policy": build_evidence["order_status_policy"],
+            "status_counts_in_valid_purchase_orders": build_evidence[
+                "status_counts_in_valid_purchase_orders"
+            ],
         },
+        "category_active_window": build_evidence["category_active_window"],
         "manual_sanity_samples": _manual_sanity_samples(modeling_rows),
     }
     payload = {

@@ -26,4 +26,4 @@ Các thuật toán ML bắt buộc phải được tự cài đặt. Không dùn
 
 ## Xác minh và tài liệu
 
-Gợi ý do AI tạo phải được nhóm review và test trước khi đưa vào project. Nhóm chịu trách nhiệm hiểu và giải thích code, công thức, quyết định và kết quả. Prompt/quyết định quan trọng được ghi trong `WORKFLOW.md`, `DECISION_LOG.md`, `prompts/` và `results/`; không cần lưu mọi hội thoại AI.
+Gợi ý do AI tạo phải được nhóm review và test trước khi đưa vào project. Nhóm chịu trách nhiệm hiểu và giải thích code, công thức, quyết định và kết quả. Prompt/quyết định quan trọng được ghi trong `WORKFLOW.md`, `DECISION_LOG.md`, `prompts/` và `results/`; không cần lưu mọi hội thoại AI. Biểu đồ EDA phải được sinh tái lập bằng source code từ dữ liệu thật, không được tạo/chỉnh tay hoặc gán số liệu không có trong artifact.

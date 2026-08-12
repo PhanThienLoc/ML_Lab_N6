@@ -3,12 +3,15 @@ raw files loaded: olist_orders_dataset.csv, olist_order_items_dataset.csv, olist
 raw rows: orders=99441, order_items=112650, products=32951, category_translation=71
 purchase date range: 2016-09-04T21:15:19 to 2018-10-17T17:30:18
 invalid/missing purchase timestamps: 0
-included order statuses: delivered
-joined item rows: 110197
-categories: 74; calendar months: 24; category-month rows: 1776
+sales event definition: Count order-item demand at order_purchase_timestamp; include every order status with a valid purchase timestamp.
+order-status policy: Audit only; final order status is not used to select demand events.
+joined item rows: 112650
+categories: 74; calendar months: 25; category-month rows: 1563
+category active-window rule: Each category starts at its first observed purchase month.
 modeling rows removed for insufficient history or future target: 296
-modeling rows: 1480
-target-month splits: train=2017-01..2018-02 (1036 rows); validation=2018-03..2018-05 (222 rows); test=2018-06..2018-08 (222 rows)
+modeling rows: 1267
+target-month splits: train=2017-01..2018-02 (755 rows); validation=2018-03..2018-05 (219 rows); test=2018-06..2018-09 (293 rows)
 preprocessing: category encoder, imputation medians, means, and stds fitted only on train
+EDA figures: 01_monthly_purchase_demand.png, 02_top_categories_demand.png, 03_zero_demand_by_month.png
 validation checks passed: temporal separation, target exclusion, aligned schemas, finite matrices, raw immutability
 manual target-alignment samples: two deterministic category sequences recorded in reports/data_analysis.md

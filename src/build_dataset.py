@@ -7,7 +7,7 @@ from typing import Any, Mapping
 import pandas as pd
 
 
-STATIC_PRODUCT_COLUMNS = {
+PRODUCT_ATTRIBUTE_COLUMNS = {
     "product_weight_g": "avg_product_weight",
     "product_length_cm": "avg_product_length",
     "product_height_cm": "avg_product_height",
@@ -69,23 +69,32 @@ def _assert_unique(frame: pd.DataFrame, key: str, table_name: str) -> None:
 
 
 def _monthly_grid(aggregated: pd.DataFrame) -> pd.DataFrame:
-    """Insert every calendar month for every observed category.
+    """Complete each category's calendar from its first observation onward.
 
-    A global observed-month range is intentionally used. A category with no
-    item in a month then has zero sales, instead of making a lag appear to be
-    from the preceding calendar month when it was not.
+    A missing month *after* a category has first been observed represents zero
+    demand.  Months before that first observation are deliberately absent: a
+    global category-by-month Cartesian grid would invent an unobserved category
+    history and could expose a future category to the training split.
     """
 
     if aggregated.empty:
-        raise ValueError("No category-month rows remain after status and join filtering.")
-    categories = sorted(aggregated["product_category"].dropna().unique())
-    months = pd.date_range(
-        aggregated["feature_month"].min(), aggregated["feature_month"].max(), freq="MS"
-    )
-    index = pd.MultiIndex.from_product(
-        [categories, months], names=["product_category", "feature_month"]
-    )
-    panel = aggregated.set_index(["product_category", "feature_month"]).reindex(index).reset_index()
+        raise ValueError("No category-month rows remain after purchase-timestamp and join filtering.")
+    global_end_month = aggregated["feature_month"].max()
+    panels: list[pd.DataFrame] = []
+    for category, category_rows in aggregated.groupby("product_category", sort=True):
+        active_months = pd.date_range(
+            start=category_rows["feature_month"].min(),
+            end=global_end_month,
+            freq="MS",
+        )
+        category_panel = category_rows.set_index("feature_month").reindex(active_months)
+        category_panel.index.name = "feature_month"
+        category_panel["product_category"] = category
+        panels.append(category_panel.reset_index())
+
+    panel = pd.concat(panels, ignore_index=True).sort_values(
+        ["product_category", "feature_month"]
+    ).reset_index(drop=True)
 
     zero_fill_columns = ["sales_current", "orders_current", "unique_products_current"]
     for column in zero_fill_columns:
@@ -95,11 +104,10 @@ def _monthly_grid(aggregated: pd.DataFrame) -> pd.DataFrame:
 
 def build_category_month_dataset(
     raw_data: Mapping[str, pd.DataFrame],
-    included_statuses: tuple[str, ...] = ("delivered",),
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Return a complete category-by-month sales panel plus join evidence.
 
-    `sales_current` is quantity of order-item records in a month. For the
+    `sales_current` is purchase-time quantity of order-item records in a month. For the
     supplied Olist order-items schema, one row represents an individual item;
     the aggregation intentionally does not sum revenue because the prediction
     target is sales quantity.
@@ -114,21 +122,15 @@ def build_category_month_dataset(
     _assert_unique(products, "product_id", "products")
     _assert_unique(translation, "product_category_name", "category_translation")
 
-    valid_statuses = set(included_statuses)
-    if not valid_statuses:
-        raise ValueError("At least one completed order status must be included.")
     orders["order_purchase_timestamp"] = pd.to_datetime(
         orders["order_purchase_timestamp"], errors="coerce"
     )
     valid_orders = orders.loc[
-        orders["order_status"].isin(valid_statuses)
-        & orders["order_purchase_timestamp"].notna(),
+        orders["order_purchase_timestamp"].notna(),
         ["order_id", "order_status", "order_purchase_timestamp"],
     ].copy()
     if valid_orders.empty:
-        raise ValueError(
-            f"No valid orders found for included statuses {sorted(valid_statuses)} with valid purchase dates."
-        )
+        raise ValueError("No orders with a valid purchase timestamp remain.")
 
     join_audit: list[dict[str, Any]] = []
     orders_items = valid_orders.merge(
@@ -139,7 +141,13 @@ def build_category_month_dataset(
     )
     join_audit.append(
         _join_record(
-            "orders (filtered)", "order_items", "order_id", "one_to_many", valid_orders, order_items, orders_items
+            "orders (valid purchase timestamp)",
+            "order_items",
+            "order_id",
+            "one_to_many",
+            valid_orders,
+            order_items,
+            orders_items,
         )
     )
 
@@ -190,7 +198,7 @@ def build_category_month_dataset(
         "avg_freight_current": ("freight_value", "mean"),
     }
     present_static_columns = {
-        source: target for source, target in STATIC_PRODUCT_COLUMNS.items() if source in final.columns
+        source: target for source, target in PRODUCT_ATTRIBUTE_COLUMNS.items() if source in final.columns
     }
     for source, target in present_static_columns.items():
         final[source] = pd.to_numeric(final[source], errors="coerce")
@@ -208,25 +216,33 @@ def build_category_month_dataset(
     panel["unique_products_current"] = panel["unique_products_current"].astype("int64")
 
     evidence: dict[str, Any] = {
-        "included_statuses": sorted(valid_statuses),
-        "excluded_statuses": sorted(
-            str(value)
-            for value in orders.loc[~orders["order_status"].isin(valid_statuses), "order_status"].dropna().unique()
+        "sales_event_definition": (
+            "Count order-item demand at order_purchase_timestamp; include every order status "
+            "with a valid purchase timestamp."
         ),
+        "order_status_policy": "Audit only; final order status is not used to select demand events.",
+        "status_counts_in_valid_purchase_orders": {
+            str(status): int(count)
+            for status, count in valid_orders["order_status"].fillna("missing").value_counts().sort_index().items()
+        },
         "valid_orders": int(len(valid_orders)),
         "joined_item_rows": int(len(final)),
         "join_audit": join_audit,
         "categories": int(panel["product_category"].nunique()),
         "calendar_months": int(panel["feature_month"].nunique()),
         "category_month_rows": int(len(panel)),
+        "category_active_window": {
+            "start_rule": "Each category starts at its first observed purchase month.",
+            "end_month": pd.Timestamp(panel["feature_month"].max()).strftime("%Y-%m"),
+        },
         "missing_product_category_after_translation": int(
             final["product_category_name_english"].isna().sum()
         ),
-        "static_product_features_present": list(present_static_columns.values()),
+        "product_attribute_features_present": list(present_static_columns.values()),
         "invalid_values": {
             "negative_price": int((final["price"] < 0).sum()),
             "negative_freight": int((final["freight_value"] < 0).sum()),
-            "nonpositive_sales_rows": int((panel["sales_current"] < 0).sum()),
+            "negative_sales_rows": int((panel["sales_current"] < 0).sum()),
         },
     }
     return panel, evidence

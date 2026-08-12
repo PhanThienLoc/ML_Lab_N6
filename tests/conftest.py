@@ -47,7 +47,8 @@ def synthetic_raw_dir(tmp_path: Path) -> Path:
                     "freight_value": 3 + index / 10,
                 }
             )
-    # A non-delivered order verifies the completed-sales filter.
+    # A cancelled order verifies that purchase-time demand does not depend on a
+    # later final status. Its item remains a real demand event in May.
     orders.append(
         {
             "order_id": "cancelled_order",

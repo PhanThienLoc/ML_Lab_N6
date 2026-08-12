@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import pandas as pd
@@ -29,11 +30,11 @@ FEATURE_DOCUMENTATION: dict[str, dict[str, str]] = {
         "leakage_assessment": "No target or future sales used; unknown validation/test categories are all-zero encoded.",
     },
     "sales_current": {
-        "source_columns": "order_items.product_id joined to delivered orders.order_purchase_timestamp",
-        "formula": "Count of order-item rows for category in feature month t.",
+        "source_columns": "order_items.product_id joined to orders.order_purchase_timestamp",
+        "formula": "Count of order-item demand rows for category in feature month t.",
         "availability": "End of month t.",
-        "reason": "Most recent observed sales signal.",
-        "leakage_assessment": "Uses month t only, never t+1.",
+        "reason": "Most recent purchase-time demand signal.",
+        "leakage_assessment": "Uses purchase events in month t only; final order status is not used.",
     },
     "sales_lag_1": {
         "source_columns": "sales_current",
@@ -63,18 +64,18 @@ FEATURE_DOCUMENTATION: dict[str, dict[str, str]] = {
         "reason": "Smooths a noisy recent sales history.",
         "leakage_assessment": "Does not include sales(t+1) or any later value.",
     },
-    "month": {
+    "month_sin": {
         "source_columns": "orders.order_purchase_timestamp",
-        "formula": "Calendar month number of feature month t.",
+        "formula": "sin(2π × calendar_month(t) / 12).",
         "availability": "End of month t.",
-        "reason": "Simple seasonality signal.",
+        "reason": "Represents cyclic annual seasonality without treating December and January as far apart.",
         "leakage_assessment": "Derived from the feature-month calendar only.",
     },
-    "quarter": {
+    "month_cos": {
         "source_columns": "orders.order_purchase_timestamp",
-        "formula": "Calendar quarter of feature month t.",
+        "formula": "cos(2π × calendar_month(t) / 12).",
         "availability": "End of month t.",
-        "reason": "Coarse seasonality signal.",
+        "reason": "Pairs with month_sin to represent cyclic annual seasonality.",
         "leakage_assessment": "Derived from the feature-month calendar only.",
     },
     "year": {
@@ -99,9 +100,9 @@ def _validate_monthly_panel(panel: pd.DataFrame) -> None:
 def create_features(panel: pd.DataFrame) -> pd.DataFrame:
     """Create history-only features and the following-calendar-month target.
 
-    The panel must already contain a complete monthly grid. Group shifts are
-    therefore calendar-aligned rather than merely aligned to prior observed
-    transactions.
+    The panel must already contain a complete monthly grid for each category's
+    active window. Group shifts are therefore calendar-aligned rather than
+    merely aligned to prior observed transactions.
     """
 
     _validate_monthly_panel(panel)
@@ -118,7 +119,9 @@ def create_features(panel: pd.DataFrame) -> pd.DataFrame:
     features["sales_next_month"] = grouped_sales.shift(-1)
     features["target_month"] = features["feature_month"] + pd.offsets.MonthBegin(1)
     features["month"] = features["feature_month"].dt.month.astype("int64")
-    features["quarter"] = features["feature_month"].dt.quarter.astype("int64")
+    month_angle = math.tau * features["month"] / 12.0
+    features["month_sin"] = month_angle.map(math.sin)
+    features["month_cos"] = month_angle.map(math.cos)
     features["year"] = features["feature_month"].dt.year.astype("int64")
     return features
 
@@ -141,13 +144,10 @@ def assert_feature_alignment(features: pd.DataFrame) -> None:
     for category, group in features.groupby("product_category", sort=False):
         ordered = group.sort_values("feature_month").reset_index(drop=True)
         months = pd.to_datetime(ordered["feature_month"])
-        if not months.diff().dropna().eq(pd.Timedelta(days=0)).all():
-            # Month offsets have variable day lengths, so validate the period
-            # sequence rather than a fixed day count.
-            periods = months.dt.to_period("M")
-            expected_periods = pd.period_range(periods.min(), periods.max(), freq="M")
-            if not periods.equals(pd.Series(expected_periods)):
-                raise AssertionError(f"{category!r} does not have a complete monthly grid.")
+        periods = pd.PeriodIndex(months.dt.to_period("M"))
+        expected_periods = pd.period_range(periods.min(), periods.max(), freq="M")
+        if not periods.equals(expected_periods):
+            raise AssertionError(f"{category!r} does not have a complete monthly grid.")
         expected_lag_1 = ordered["sales_current"].shift(1)
         expected_lag_2 = ordered["sales_current"].shift(2)
         expected_lag_3 = ordered["sales_current"].shift(3)
@@ -218,8 +218,8 @@ def available_feature_columns(features: pd.DataFrame) -> tuple[list[str], list[s
         "sales_lag_2",
         "sales_lag_3",
         "rolling_sales_mean_3",
-        "month",
-        "quarter",
+        "month_sin",
+        "month_cos",
         "year",
         "orders_current",
         "unique_products_current",
@@ -240,10 +240,10 @@ def feature_definitions(feature_names: list[str]) -> dict[str, dict[str, str]]:
         {
             "orders_current": {
                 "source_columns": "orders.order_id joined to order_items",
-                "formula": "Number of distinct delivered order_id values for the category in month t.",
+                "formula": "Number of distinct purchase-time order_id values for the category in month t.",
                 "availability": "End of month t.",
-                "reason": "Separates order frequency from quantity of items.",
-                "leakage_assessment": "Uses delivered orders in month t only.",
+                "reason": "Separates purchase-order frequency from item quantity.",
+                "leakage_assessment": "Uses purchase events in month t only; final order status is not used.",
             },
             "unique_products_current": {
                 "source_columns": "order_items.product_id",
@@ -254,14 +254,14 @@ def feature_definitions(feature_names: list[str]) -> dict[str, dict[str, str]]:
             },
             "avg_price_current": {
                 "source_columns": "order_items.price",
-                "formula": "Mean item price for category sales in month t.",
+                "formula": "Mean item price for category order-items in month t.",
                 "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
                 "reason": "Captures the current observed price mix.",
                 "leakage_assessment": "Neither aggregation nor fill looks into future months.",
             },
             "avg_freight_current": {
                 "source_columns": "order_items.freight_value",
-                "formula": "Mean freight value for category sales in month t.",
+                "formula": "Mean freight value for category order-items in month t.",
                 "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
                 "reason": "Captures current shipping-cost mix.",
                 "leakage_assessment": "Neither aggregation nor fill looks into future months.",
@@ -279,10 +279,10 @@ def feature_definitions(feature_names: list[str]) -> dict[str, dict[str, str]]:
     for feature in CURRENT_TRANSACTION_COLUMNS[2:]:
         source = static_sources[feature]
         definitions[feature] = {
-            "source_columns": f"olist_products_dataset.csv.{source} joined through sold product_id",
-            "formula": f"Mean {source} of products sold in the category in month t.",
+            "source_columns": f"olist_products_dataset.csv.{source} joined through ordered product_id",
+            "formula": f"Mean {source} of products ordered in the category in month t.",
             "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
-            "reason": "Describes the observed physical/content mix of the category basket.",
+            "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
             "leakage_assessment": "Neither aggregation nor fill looks into future months.",
         }
     return {name: definitions.get(name, {}) for name in feature_names}
