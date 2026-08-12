@@ -1,72 +1,33 @@
-# AI Usage Rules
+# Quy tắc sử dụng AI
 
-## 1. Purpose
+## Mục đích
 
-This document defines the rules for using Artificial Intelligence (AI) tools during the development of the Machine Learning project.
+AI là công cụ hỗ trợ học tập, thiết kế, cài đặt, debug, tài liệu và review code trong project ML.
 
-AI is used as a supporting tool for learning, design, implementation, debugging, documentation, and code review.
+## AI được phép hỗ trợ
 
-## 2. Allowed Uses of AI
+- Giải thích khái niệm/công thức ML; phân tích dataset và vấn đề dữ liệu.
+- Đề xuất preprocessing, feature engineering, module/interface và pseudocode.
+- Hỗ trợ debug, phân tích lỗi, unit test/edge case, review code và tài liệu.
 
-AI may be used to:
+## Các giới hạn khi dùng AI
 
-- Explain Machine Learning concepts and formulas.
-- Help analyze the dataset and identify possible data issues.
-- Suggest data preprocessing and feature engineering approaches.
-- Help design software modules and interfaces.
-- Provide pseudocode and implementation suggestions.
-- Assist with debugging and error analysis.
-- Suggest unit tests and edge cases.
-- Review code for readability and correctness.
-- Help improve project documentation.
+AI không được thay thế sự hiểu biết của nhóm; bịa dữ liệu/kết quả; dùng thông tin tương lai; dùng test set để chọn model; thay phần tự cài đặt bằng estimator có sẵn; hoặc tự đưa ra quyết định cuối khi chưa review.
 
-## 3. Restricted Uses of AI
+## Quy tắc tự cài đặt
 
-AI must not:
+Các thuật toán ML bắt buộc phải được tự cài đặt. Không dùng `sklearn.LinearRegression` hoặc `sklearn.DecisionTreeRegressor` trong phần cài đặt chính. Được dùng NumPy cho phép tính số và thao tác mảng.
 
-- Replace the team's understanding of the implemented algorithms.
-- Generate or fabricate experimental results.
-- Create fake dataset records or fake evaluation results.
-- Use future information to construct features.
-- Use the test set to select models or hyperparameters.
-- Replace the required from-scratch implementations with pre-built Machine Learning estimators.
-- Make final project decisions without review and verification by the team.
+## Chống data leakage
 
-## 4. From-Scratch Implementation Rules
+- Feature chỉ dùng thông tin có ở thời điểm dự đoán.
+- Không dùng quan sát tương lai để tạo feature lịch sử.
+- Validation dùng để so sánh/chọn model; test chỉ dùng đánh giá cuối.
+- Trailing incomplete period phải bị loại bằng policy dữ liệu tái lập được trước khi tạo target/split; không được sửa hoặc bỏ metric thủ công sau evaluation.
+- Inference phải dùng preprocessing state/feature order đã lưu cùng model; không refit preprocessing hoặc dùng test row làm scenario demo.
+- Với target count không âm, policy post-processing phải được dùng nhất quán ở validation, final test và inference.
+- Official experiment batch phải có run ID không mơ hồ; không append lặp run ID cố định vào cùng evidence CSV.
 
-The required Machine Learning algorithms must be implemented from scratch.
+## Xác minh và tài liệu
 
-The following pre-built estimators must not be used for the main implementation:
-
-- sklearn LinearRegression
-- sklearn DecisionTreeRegressor
-
-NumPy may be used for numerical calculations and array operations.
-
-## 5. Data Leakage Prevention
-
-The team must prevent data leakage throughout the project.
-
-In particular:
-
-- Features must only use information available at prediction time.
-- Future observations must not be used to construct historical features.
-- The test set must not be used for model or hyperparameter selection.
-- Validation data must be used for model comparison and selection.
-- The test set must only be used for final evaluation.
-
-## 6. Verification
-
-AI-generated suggestions must be reviewed and tested by the team before being included in the project.
-
-The team is responsible for understanding and explaining all submitted code, formulas, design decisions, and experimental results.
-
-## 7. Documentation
-
-Important AI-assisted decisions should be documented in:
-
-- `WORKFLOW.md`
-- `DECISION_LOG.md`
-- The appropriate files under `prompts/`
-
-The team does not need to store every AI conversation. Only prompts and decisions that have a meaningful impact on the project should be documented.
+Gợi ý do AI tạo phải được nhóm review và test trước khi đưa vào project. Nhóm chịu trách nhiệm hiểu và giải thích code, công thức, quyết định và kết quả. Prompt/quyết định quan trọng được ghi trong `WORKFLOW.md`, `DECISION_LOG.md`, `prompts/` và `results/`; không cần lưu mọi hội thoại AI. Biểu đồ EDA phải được sinh tái lập bằng source code từ dữ liệu thật, không được tạo/chỉnh tay hoặc gán số liệu không có trong artifact.

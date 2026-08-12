@@ -1,0 +1,2 @@
+product_category,sales_current,sales_lag_1,sales_lag_2,sales_lag_3,rolling_sales_mean_3,month_sin,month_cos,year,orders_current,unique_products_current,avg_price_current,avg_freight_current,avg_product_weight,avg_product_length,avg_product_height,avg_product_width,avg_product_description_length,avg_product_photos_qty
+furniture_decor,0,0,67,2,22.333333333333332,-2.4492935982947064e-16,1.0,2016,0,0,86.68492537313433,18.572985074626867,2122.8358208955224,38.492537313432834,17.507462686567163,26.19402985074627,530.820895522388,2.7611940298507465

@@ -1,0 +1,962 @@
+{
+  "aggregation_level": "product_category_month",
+  "category_active_window": {
+    "end_month": "2018-08",
+    "start_rule": "Each category starts at its first observed purchase month."
+  },
+  "dataset_name": "olist_brazilian_ecommerce",
+  "eda_summary": {
+    "figures": [
+      "01_monthly_purchase_demand.png",
+      "02_top_categories_demand.png",
+      "03_zero_demand_by_month.png"
+    ],
+    "monthly_demand_peak": {
+      "month": "2017-11",
+      "order_item_demand": 8665
+    },
+    "top_category_by_demand": {
+      "order_item_demand": 11115,
+      "product_category": "bed_bath_table"
+    },
+    "zero_demand_category_months": {
+      "rate": 0.13901947615849564,
+      "rows": 207
+    }
+  },
+  "feature_definitions": {
+    "avg_freight_current": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean freight value for category order-items in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Captures current shipping-cost mix.",
+      "source_columns": "order_items.freight_value"
+    },
+    "avg_price_current": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean item price for category order-items in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Captures the current observed price mix.",
+      "source_columns": "order_items.price"
+    },
+    "avg_product_description_length": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_description_lenght of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_description_lenght joined through ordered product_id"
+    },
+    "avg_product_height": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_height_cm of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_height_cm joined through ordered product_id"
+    },
+    "avg_product_length": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_length_cm of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_length_cm joined through ordered product_id"
+    },
+    "avg_product_photos_qty": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_photos_qty of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_photos_qty joined through ordered product_id"
+    },
+    "avg_product_weight": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_weight_g of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_weight_g joined through ordered product_id"
+    },
+    "avg_product_width": {
+      "availability": "End of month t; zero-sales gaps use past-only forward fill then train median.",
+      "formula": "Mean product_width_cm of products ordered in the category in month t.",
+      "leakage_assessment": "Neither aggregation nor fill looks into future months.",
+      "reason": "Describes the purchase-weighted physical/content mix of items ordered in the category.",
+      "source_columns": "olist_products_dataset.csv.product_width_cm joined through ordered product_id"
+    },
+    "month_cos": {
+      "availability": "End of month t.",
+      "formula": "cos(2π × calendar_month(t) / 12).",
+      "leakage_assessment": "Derived from the feature-month calendar only.",
+      "reason": "Pairs with month_sin to represent cyclic annual seasonality.",
+      "source_columns": "orders.order_purchase_timestamp"
+    },
+    "month_sin": {
+      "availability": "End of month t.",
+      "formula": "sin(2π × calendar_month(t) / 12).",
+      "leakage_assessment": "Derived from the feature-month calendar only.",
+      "reason": "Represents cyclic annual seasonality without treating December and January as far apart.",
+      "source_columns": "orders.order_purchase_timestamp"
+    },
+    "orders_current": {
+      "availability": "End of month t.",
+      "formula": "Number of distinct purchase-time order_id values for the category in month t.",
+      "leakage_assessment": "Uses purchase events in month t only; final order status is not used.",
+      "reason": "Separates purchase-order frequency from item quantity.",
+      "source_columns": "orders.order_id joined to order_items"
+    },
+    "product_category": {
+      "availability": "Known before the forecast cutoff.",
+      "formula": "Category label, one-hot encoded from train categories only.",
+      "leakage_assessment": "No target or future sales used; unknown validation/test categories are all-zero encoded.",
+      "reason": "Captures persistent demand differences by category.",
+      "source_columns": "product_category_name_translation.csv.product_category_name_english (fallback: source category; then unknown_category)"
+    },
+    "rolling_sales_mean_3": {
+      "availability": "End of month t.",
+      "formula": "mean(sales_current(t), sales(t-1), sales(t-2))",
+      "leakage_assessment": "Does not include sales(t+1) or any later value.",
+      "reason": "Smooths a noisy recent sales history.",
+      "source_columns": "sales_current, sales_lag_1, sales_lag_2"
+    },
+    "sales_current": {
+      "availability": "End of month t.",
+      "formula": "Count of order-item demand rows for category in feature month t.",
+      "leakage_assessment": "Uses purchase events in month t only; final order status is not used.",
+      "reason": "Most recent purchase-time demand signal.",
+      "source_columns": "order_items.product_id joined to orders.order_purchase_timestamp"
+    },
+    "sales_lag_1": {
+      "availability": "End of month t.",
+      "formula": "Category sales in t-1 after completing the monthly grid.",
+      "leakage_assessment": "Explicit backward shift only.",
+      "reason": "Short-term demand persistence.",
+      "source_columns": "sales_current"
+    },
+    "sales_lag_2": {
+      "availability": "End of month t.",
+      "formula": "Category sales in t-2 after completing the monthly grid.",
+      "leakage_assessment": "Explicit backward shift only.",
+      "reason": "Medium-term history.",
+      "source_columns": "sales_current"
+    },
+    "sales_lag_3": {
+      "availability": "End of month t.",
+      "formula": "Category sales in t-3 after completing the monthly grid.",
+      "leakage_assessment": "Explicit backward shift only.",
+      "reason": "Longer recent history.",
+      "source_columns": "sales_current"
+    },
+    "unique_products_current": {
+      "availability": "End of month t.",
+      "formula": "Number of distinct product_id values for the category in month t.",
+      "leakage_assessment": "Uses month t only.",
+      "reason": "Describes current assortment breadth.",
+      "source_columns": "order_items.product_id"
+    },
+    "year": {
+      "availability": "End of month t.",
+      "formula": "Calendar year of feature month t.",
+      "leakage_assessment": "Derived from the feature-month calendar only.",
+      "reason": "Captures observed time trend.",
+      "source_columns": "orders.order_purchase_timestamp"
+    }
+  },
+  "feature_month_range": {
+    "end": "2018-07",
+    "start": "2016-12"
+  },
+  "feature_names": [
+    "sales_current",
+    "sales_lag_1",
+    "sales_lag_2",
+    "sales_lag_3",
+    "rolling_sales_mean_3",
+    "month_sin",
+    "month_cos",
+    "year",
+    "orders_current",
+    "unique_products_current",
+    "avg_price_current",
+    "avg_freight_current",
+    "avg_product_weight",
+    "avg_product_length",
+    "avg_product_height",
+    "avg_product_width",
+    "avg_product_description_length",
+    "avg_product_photos_qty",
+    "product_category__agro_industry_and_commerce",
+    "product_category__air_conditioning",
+    "product_category__art",
+    "product_category__arts_and_craftmanship",
+    "product_category__audio",
+    "product_category__auto",
+    "product_category__baby",
+    "product_category__bed_bath_table",
+    "product_category__books_general_interest",
+    "product_category__books_imported",
+    "product_category__books_technical",
+    "product_category__cds_dvds_musicals",
+    "product_category__christmas_supplies",
+    "product_category__cine_photo",
+    "product_category__computers",
+    "product_category__computers_accessories",
+    "product_category__consoles_games",
+    "product_category__construction_tools_construction",
+    "product_category__construction_tools_lights",
+    "product_category__construction_tools_safety",
+    "product_category__cool_stuff",
+    "product_category__costruction_tools_garden",
+    "product_category__costruction_tools_tools",
+    "product_category__diapers_and_hygiene",
+    "product_category__drinks",
+    "product_category__dvds_blu_ray",
+    "product_category__electronics",
+    "product_category__fashio_female_clothing",
+    "product_category__fashion_bags_accessories",
+    "product_category__fashion_childrens_clothes",
+    "product_category__fashion_male_clothing",
+    "product_category__fashion_shoes",
+    "product_category__fashion_sport",
+    "product_category__fashion_underwear_beach",
+    "product_category__fixed_telephony",
+    "product_category__food",
+    "product_category__food_drink",
+    "product_category__furniture_bedroom",
+    "product_category__furniture_decor",
+    "product_category__furniture_living_room",
+    "product_category__furniture_mattress_and_upholstery",
+    "product_category__garden_tools",
+    "product_category__health_beauty",
+    "product_category__home_appliances",
+    "product_category__home_appliances_2",
+    "product_category__home_comfort_2",
+    "product_category__home_confort",
+    "product_category__home_construction",
+    "product_category__housewares",
+    "product_category__industry_commerce_and_business",
+    "product_category__kitchen_dining_laundry_garden_furniture",
+    "product_category__la_cuisine",
+    "product_category__luggage_accessories",
+    "product_category__market_place",
+    "product_category__music",
+    "product_category__musical_instruments",
+    "product_category__office_furniture",
+    "product_category__party_supplies",
+    "product_category__pc_gamer",
+    "product_category__perfumery",
+    "product_category__pet_shop",
+    "product_category__security_and_services",
+    "product_category__signaling_and_security",
+    "product_category__small_appliances",
+    "product_category__small_appliances_home_oven_and_coffee",
+    "product_category__sports_leisure",
+    "product_category__stationery",
+    "product_category__tablets_printing_image",
+    "product_category__telephony",
+    "product_category__toys",
+    "product_category__unknown_category",
+    "product_category__watches_gifts"
+  ],
+  "forecast_horizon": "next_calendar_month",
+  "grid_and_target_filter": {
+    "rows_after_modeling_filter": 1193,
+    "rows_before_modeling_filter": 1489,
+    "rows_removed_missing_history_or_target": 296
+  },
+  "handoff_shapes": {
+    "test": {
+      "x_columns": 90,
+      "x_rows": 219,
+      "y_dtype": "float64"
+    },
+    "train": {
+      "x_columns": 90,
+      "x_rows": 755,
+      "y_dtype": "float64"
+    },
+    "validation": {
+      "x_columns": 90,
+      "x_rows": 219,
+      "y_dtype": "float64"
+    }
+  },
+  "join_audit": [
+    {
+      "expected_cardinality": "one_to_many",
+      "join_key": "order_id",
+      "left_before": {
+        "duplicate_key_rows": 0,
+        "null_key_rate": 0.0,
+        "null_keys": 0,
+        "rows": 99441
+      },
+      "left_table": "orders (valid purchase timestamp)",
+      "right_before": {
+        "duplicate_key_rows": 23787,
+        "null_key_rate": 0.0,
+        "null_keys": 0,
+        "rows": 112650
+      },
+      "right_table": "order_items",
+      "row_multiplier_vs_matched_left": 1.1417306873695092,
+      "rows_after": 112650,
+      "unexpected_row_multiplication": false,
+      "unmatched_left_rate": 0.007793566034130791,
+      "unmatched_left_rows": 775
+    },
+    {
+      "expected_cardinality": "many_to_one",
+      "join_key": "product_id",
+      "left_before": {
+        "duplicate_key_rows": 94533,
+        "null_key_rate": 0.0,
+        "null_keys": 0,
+        "rows": 112650
+      },
+      "left_table": "orders + order_items",
+      "right_before": {
+        "duplicate_key_rows": 0,
+        "null_key_rate": 0.0,
+        "null_keys": 0,
+        "rows": 32951
+      },
+      "right_table": "products",
+      "row_multiplier_vs_matched_left": 1.0,
+      "rows_after": 112650,
+      "unexpected_row_multiplication": false,
+      "unmatched_left_rate": 0.0,
+      "unmatched_left_rows": 0
+    },
+    {
+      "expected_cardinality": "many_to_one",
+      "join_key": "product_category_name",
+      "left_before": {
+        "duplicate_key_rows": 112650,
+        "null_key_rate": 0.014229915667998225,
+        "null_keys": 1603,
+        "rows": 112650
+      },
+      "left_table": "orders + items + products",
+      "right_before": {
+        "duplicate_key_rows": 0,
+        "null_key_rate": 0.0,
+        "null_keys": 0,
+        "rows": 71
+      },
+      "right_table": "category_translation",
+      "row_multiplier_vs_matched_left": 1.0146546211145437,
+      "rows_after": 112650,
+      "unexpected_row_multiplication": false,
+      "unmatched_left_rate": 0.014442964935641367,
+      "unmatched_left_rows": 1627
+    }
+  ],
+  "manual_sanity_samples": {
+    "agro_industry_and_commerce": [
+      {
+        "feature_month": "2017-04",
+        "sales_current": 0,
+        "sales_lag_1": 2.0,
+        "sales_lag_2": 7.0,
+        "sales_next_month": 4.0
+      },
+      {
+        "feature_month": "2017-05",
+        "sales_current": 4,
+        "sales_lag_1": 0.0,
+        "sales_lag_2": 2.0,
+        "sales_next_month": 1.0
+      },
+      {
+        "feature_month": "2017-06",
+        "sales_current": 1,
+        "sales_lag_1": 4.0,
+        "sales_lag_2": 0.0,
+        "sales_next_month": 1.0
+      },
+      {
+        "feature_month": "2017-07",
+        "sales_current": 1,
+        "sales_lag_1": 1.0,
+        "sales_lag_2": 4.0,
+        "sales_next_month": 4.0
+      },
+      {
+        "feature_month": "2017-08",
+        "sales_current": 4,
+        "sales_lag_1": 1.0,
+        "sales_lag_2": 1.0,
+        "sales_next_month": 4.0
+      }
+    ],
+    "air_conditioning": [
+      {
+        "feature_month": "2017-01",
+        "sales_current": 4,
+        "sales_lag_1": 0.0,
+        "sales_lag_2": 0.0,
+        "sales_next_month": 12.0
+      },
+      {
+        "feature_month": "2017-02",
+        "sales_current": 12,
+        "sales_lag_1": 4.0,
+        "sales_lag_2": 0.0,
+        "sales_next_month": 17.0
+      },
+      {
+        "feature_month": "2017-03",
+        "sales_current": 17,
+        "sales_lag_1": 12.0,
+        "sales_lag_2": 4.0,
+        "sales_next_month": 16.0
+      },
+      {
+        "feature_month": "2017-04",
+        "sales_current": 16,
+        "sales_lag_1": 17.0,
+        "sales_lag_2": 12.0,
+        "sales_next_month": 8.0
+      },
+      {
+        "feature_month": "2017-05",
+        "sales_current": 8,
+        "sales_lag_1": 16.0,
+        "sales_lag_2": 17.0,
+        "sales_next_month": 11.0
+      }
+    ]
+  },
+  "outlier_summary": {
+    "avg_freight_current": {
+      "max": 88.56,
+      "median": 18.6525,
+      "min": 0.11,
+      "non_missing": 1193,
+      "p99": 61.84519999999998
+    },
+    "avg_price_current": {
+      "max": 3549.0,
+      "median": 110.0,
+      "min": 3.9,
+      "non_missing": 1193,
+      "p99": 1131.7068505747102
+    },
+    "sales_current": {
+      "max": 981.0,
+      "median": 19.0,
+      "min": 0.0,
+      "non_missing": 1193,
+      "p99": 746.0799999999999
+    }
+  },
+  "preprocessing": {
+    "categorical_columns": [
+      "product_category"
+    ],
+    "category_levels": {
+      "product_category": [
+        "agro_industry_and_commerce",
+        "air_conditioning",
+        "art",
+        "arts_and_craftmanship",
+        "audio",
+        "auto",
+        "baby",
+        "bed_bath_table",
+        "books_general_interest",
+        "books_imported",
+        "books_technical",
+        "cds_dvds_musicals",
+        "christmas_supplies",
+        "cine_photo",
+        "computers",
+        "computers_accessories",
+        "consoles_games",
+        "construction_tools_construction",
+        "construction_tools_lights",
+        "construction_tools_safety",
+        "cool_stuff",
+        "costruction_tools_garden",
+        "costruction_tools_tools",
+        "diapers_and_hygiene",
+        "drinks",
+        "dvds_blu_ray",
+        "electronics",
+        "fashio_female_clothing",
+        "fashion_bags_accessories",
+        "fashion_childrens_clothes",
+        "fashion_male_clothing",
+        "fashion_shoes",
+        "fashion_sport",
+        "fashion_underwear_beach",
+        "fixed_telephony",
+        "food",
+        "food_drink",
+        "furniture_bedroom",
+        "furniture_decor",
+        "furniture_living_room",
+        "furniture_mattress_and_upholstery",
+        "garden_tools",
+        "health_beauty",
+        "home_appliances",
+        "home_appliances_2",
+        "home_comfort_2",
+        "home_confort",
+        "home_construction",
+        "housewares",
+        "industry_commerce_and_business",
+        "kitchen_dining_laundry_garden_furniture",
+        "la_cuisine",
+        "luggage_accessories",
+        "market_place",
+        "music",
+        "musical_instruments",
+        "office_furniture",
+        "party_supplies",
+        "pc_gamer",
+        "perfumery",
+        "pet_shop",
+        "security_and_services",
+        "signaling_and_security",
+        "small_appliances",
+        "small_appliances_home_oven_and_coffee",
+        "sports_leisure",
+        "stationery",
+        "tablets_printing_image",
+        "telephony",
+        "toys",
+        "unknown_category",
+        "watches_gifts"
+      ]
+    },
+    "feature_names": [
+      "sales_current",
+      "sales_lag_1",
+      "sales_lag_2",
+      "sales_lag_3",
+      "rolling_sales_mean_3",
+      "month_sin",
+      "month_cos",
+      "year",
+      "orders_current",
+      "unique_products_current",
+      "avg_price_current",
+      "avg_freight_current",
+      "avg_product_weight",
+      "avg_product_length",
+      "avg_product_height",
+      "avg_product_width",
+      "avg_product_description_length",
+      "avg_product_photos_qty",
+      "product_category__agro_industry_and_commerce",
+      "product_category__air_conditioning",
+      "product_category__art",
+      "product_category__arts_and_craftmanship",
+      "product_category__audio",
+      "product_category__auto",
+      "product_category__baby",
+      "product_category__bed_bath_table",
+      "product_category__books_general_interest",
+      "product_category__books_imported",
+      "product_category__books_technical",
+      "product_category__cds_dvds_musicals",
+      "product_category__christmas_supplies",
+      "product_category__cine_photo",
+      "product_category__computers",
+      "product_category__computers_accessories",
+      "product_category__consoles_games",
+      "product_category__construction_tools_construction",
+      "product_category__construction_tools_lights",
+      "product_category__construction_tools_safety",
+      "product_category__cool_stuff",
+      "product_category__costruction_tools_garden",
+      "product_category__costruction_tools_tools",
+      "product_category__diapers_and_hygiene",
+      "product_category__drinks",
+      "product_category__dvds_blu_ray",
+      "product_category__electronics",
+      "product_category__fashio_female_clothing",
+      "product_category__fashion_bags_accessories",
+      "product_category__fashion_childrens_clothes",
+      "product_category__fashion_male_clothing",
+      "product_category__fashion_shoes",
+      "product_category__fashion_sport",
+      "product_category__fashion_underwear_beach",
+      "product_category__fixed_telephony",
+      "product_category__food",
+      "product_category__food_drink",
+      "product_category__furniture_bedroom",
+      "product_category__furniture_decor",
+      "product_category__furniture_living_room",
+      "product_category__furniture_mattress_and_upholstery",
+      "product_category__garden_tools",
+      "product_category__health_beauty",
+      "product_category__home_appliances",
+      "product_category__home_appliances_2",
+      "product_category__home_comfort_2",
+      "product_category__home_confort",
+      "product_category__home_construction",
+      "product_category__housewares",
+      "product_category__industry_commerce_and_business",
+      "product_category__kitchen_dining_laundry_garden_furniture",
+      "product_category__la_cuisine",
+      "product_category__luggage_accessories",
+      "product_category__market_place",
+      "product_category__music",
+      "product_category__musical_instruments",
+      "product_category__office_furniture",
+      "product_category__party_supplies",
+      "product_category__pc_gamer",
+      "product_category__perfumery",
+      "product_category__pet_shop",
+      "product_category__security_and_services",
+      "product_category__signaling_and_security",
+      "product_category__small_appliances",
+      "product_category__small_appliances_home_oven_and_coffee",
+      "product_category__sports_leisure",
+      "product_category__stationery",
+      "product_category__tablets_printing_image",
+      "product_category__telephony",
+      "product_category__toys",
+      "product_category__unknown_category",
+      "product_category__watches_gifts"
+    ],
+    "numeric_fill_values_train_median": {
+      "avg_freight_current": 18.2625,
+      "avg_price_current": 112.7225,
+      "avg_product_description_length": 728.4545454545455,
+      "avg_product_height": 15.833333333333334,
+      "avg_product_length": 28.90909090909091,
+      "avg_product_photos_qty": 2.1424224862358736,
+      "avg_product_weight": 1503.2826797385621,
+      "avg_product_width": 22.095890410958905,
+      "month_cos": 6.123233995736766e-17,
+      "month_sin": -2.4492935982947064e-16,
+      "orders_current": 15.0,
+      "rolling_sales_mean_3": 14.0,
+      "sales_current": 17.0,
+      "sales_lag_1": 12.0,
+      "sales_lag_2": 10.0,
+      "sales_lag_3": 8.0,
+      "unique_products_current": 11.0,
+      "year": 2017.0
+    },
+    "numeric_train_means": {
+      "avg_freight_current": 21.34032708149619,
+      "avg_price_current": 163.6191703911351,
+      "avg_product_description_length": 799.4702060289903,
+      "avg_product_height": 17.494726936215233,
+      "avg_product_length": 30.935235459117795,
+      "avg_product_photos_qty": 2.422858984566155,
+      "avg_product_weight": 2588.937831205196,
+      "avg_product_width": 24.179361292813137,
+      "month_cos": 0.07253691629716512,
+      "month_sin": -0.10326029698949184,
+      "orders_current": 68.4,
+      "rolling_sales_mean_3": 67.78454746136865,
+      "sales_current": 77.4158940397351,
+      "sales_lag_1": 66.93245033112582,
+      "sales_lag_2": 59.00529801324503,
+      "sales_lag_3": 48.027814569536424,
+      "unique_products_current": 43.07549668874172,
+      "year": 2017.0913907284769
+    },
+    "numeric_train_stds": {
+      "avg_freight_current": 9.766247036401092,
+      "avg_price_current": 291.1497156548539,
+      "avg_product_description_length": 470.3331988892582,
+      "avg_product_height": 10.171449265114402,
+      "avg_product_length": 12.492319725473479,
+      "avg_product_photos_qty": 1.3812104628880435,
+      "avg_product_weight": 3126.9407130369723,
+      "avg_product_width": 9.471481311265698,
+      "month_cos": 0.7373906822646015,
+      "month_sin": 0.6635741771264804,
+      "orders_current": 114.63147516863661,
+      "rolling_sales_mean_3": 117.51238256266069,
+      "sales_current": 132.032232715562,
+      "sales_lag_1": 119.22863313911235,
+      "sales_lag_2": 112.22623779113444,
+      "sales_lag_3": 91.11009580433746,
+      "unique_products_current": 70.11561593727345,
+      "year": 0.30163800008096925
+    },
+    "numerical_columns": [
+      "sales_current",
+      "sales_lag_1",
+      "sales_lag_2",
+      "sales_lag_3",
+      "rolling_sales_mean_3",
+      "month_sin",
+      "month_cos",
+      "year",
+      "orders_current",
+      "unique_products_current",
+      "avg_price_current",
+      "avg_freight_current",
+      "avg_product_weight",
+      "avg_product_length",
+      "avg_product_height",
+      "avg_product_width",
+      "avg_product_description_length",
+      "avg_product_photos_qty"
+    ],
+    "unknown_category_rule": "All-zero one-hot vector; transformation does not fail."
+  },
+  "product_attribute_features_present": [
+    "avg_product_weight",
+    "avg_product_length",
+    "avg_product_height",
+    "avg_product_width",
+    "avg_product_description_length",
+    "avg_product_photos_qty"
+  ],
+  "raw_audit": {
+    "order_status_distribution": {
+      "approved": 2,
+      "canceled": 625,
+      "created": 5,
+      "delivered": 96478,
+      "invoiced": 314,
+      "processing": 301,
+      "shipped": 1107,
+      "unavailable": 609
+    },
+    "purchase_timestamp": {
+      "invalid_or_missing": 0,
+      "max": "2018-10-17T17:30:18",
+      "min": "2016-09-04T21:15:19"
+    },
+    "tables": {
+      "category_translation": {
+        "columns": [
+          "product_category_name",
+          "product_category_name_english"
+        ],
+        "dtypes": {
+          "product_category_name": "str",
+          "product_category_name_english": "str"
+        },
+        "duplicate_rows": 0,
+        "missing_values": {
+          "product_category_name": 0,
+          "product_category_name_english": 0
+        },
+        "rows": 71
+      },
+      "order_items": {
+        "columns": [
+          "order_id",
+          "order_item_id",
+          "product_id",
+          "seller_id",
+          "shipping_limit_date",
+          "price",
+          "freight_value"
+        ],
+        "dtypes": {
+          "freight_value": "float64",
+          "order_id": "str",
+          "order_item_id": "int64",
+          "price": "float64",
+          "product_id": "str",
+          "seller_id": "str",
+          "shipping_limit_date": "str"
+        },
+        "duplicate_rows": 0,
+        "missing_values": {
+          "freight_value": 0,
+          "order_id": 0,
+          "order_item_id": 0,
+          "price": 0,
+          "product_id": 0,
+          "seller_id": 0,
+          "shipping_limit_date": 0
+        },
+        "rows": 112650
+      },
+      "orders": {
+        "columns": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "order_purchase_timestamp",
+          "order_approved_at",
+          "order_delivered_carrier_date",
+          "order_delivered_customer_date",
+          "order_estimated_delivery_date"
+        ],
+        "dtypes": {
+          "customer_id": "str",
+          "order_approved_at": "str",
+          "order_delivered_carrier_date": "str",
+          "order_delivered_customer_date": "str",
+          "order_estimated_delivery_date": "str",
+          "order_id": "str",
+          "order_purchase_timestamp": "str",
+          "order_status": "str"
+        },
+        "duplicate_rows": 0,
+        "missing_values": {
+          "customer_id": 0,
+          "order_approved_at": 160,
+          "order_delivered_carrier_date": 1783,
+          "order_delivered_customer_date": 2965,
+          "order_estimated_delivery_date": 0,
+          "order_id": 0,
+          "order_purchase_timestamp": 0,
+          "order_status": 0
+        },
+        "rows": 99441
+      },
+      "products": {
+        "columns": [
+          "product_id",
+          "product_category_name",
+          "product_name_lenght",
+          "product_description_lenght",
+          "product_photos_qty",
+          "product_weight_g",
+          "product_length_cm",
+          "product_height_cm",
+          "product_width_cm"
+        ],
+        "dtypes": {
+          "product_category_name": "str",
+          "product_description_lenght": "float64",
+          "product_height_cm": "float64",
+          "product_id": "str",
+          "product_length_cm": "float64",
+          "product_name_lenght": "float64",
+          "product_photos_qty": "float64",
+          "product_weight_g": "float64",
+          "product_width_cm": "float64"
+        },
+        "duplicate_rows": 0,
+        "missing_values": {
+          "product_category_name": 610,
+          "product_description_lenght": 610,
+          "product_height_cm": 2,
+          "product_id": 0,
+          "product_length_cm": 2,
+          "product_name_lenght": 610,
+          "product_photos_qty": 610,
+          "product_weight_g": 2,
+          "product_width_cm": 2
+        },
+        "rows": 32951
+      }
+    }
+  },
+  "raw_files": [
+    "olist_orders_dataset.csv",
+    "olist_order_items_dataset.csv",
+    "olist_products_dataset.csv",
+    "product_category_name_translation.csv"
+  ],
+  "raw_immutability_sha256": {
+    "category_translation": "a81f0d1f27b27e7293f761bc79e3ce8f348ee39c4b3ed3e49bde38f478586278",
+    "order_items": "4f6abdbbc94036d0df4a76fa0520c072e31a40119d70f7f370fba1e2285d2bcb",
+    "orders": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+    "products": "3e6569628a17fbc75fd206ee357b59e20364b9afa90f5b6cd5b4d624c58aa9cc"
+  },
+  "sales_definition": "Count of order-item demand at order_purchase_timestamp; all final order statuses are included.",
+  "sales_event_policy": {
+    "definition": "Count order-item demand at order_purchase_timestamp; include every order status with a valid purchase timestamp.",
+    "order_status_policy": "Audit only; final order status is not used to select demand events.",
+    "status_counts_in_valid_purchase_orders": {
+      "approved": 2,
+      "canceled": 625,
+      "created": 5,
+      "delivered": 96478,
+      "invoiced": 314,
+      "processing": 301,
+      "shipped": 1107,
+      "unavailable": 609
+    }
+  },
+  "sales_event_timestamp": "order_purchase_timestamp",
+  "source_categorical_features": [
+    "product_category"
+  ],
+  "source_numerical_features": [
+    "sales_current",
+    "sales_lag_1",
+    "sales_lag_2",
+    "sales_lag_3",
+    "rolling_sales_mean_3",
+    "month_sin",
+    "month_cos",
+    "year",
+    "orders_current",
+    "unique_products_current",
+    "avg_price_current",
+    "avg_freight_current",
+    "avg_product_weight",
+    "avg_product_length",
+    "avg_product_height",
+    "avg_product_width",
+    "avg_product_description_length",
+    "avg_product_photos_qty"
+  ],
+  "target_month_range": {
+    "end": "2018-08",
+    "start": "2017-01"
+  },
+  "target_name": "sales_next_month",
+  "temporal_split": {
+    "test": {
+      "rows": 219,
+      "target_month_count": 3,
+      "target_month_end": "2018-08",
+      "target_month_start": "2018-06"
+    },
+    "train": {
+      "rows": 755,
+      "target_month_count": 14,
+      "target_month_end": "2018-02",
+      "target_month_start": "2017-01"
+    },
+    "validation": {
+      "rows": 219,
+      "target_month_count": 3,
+      "target_month_end": "2018-05",
+      "target_month_start": "2018-03"
+    }
+  },
+  "trailing_period_policy": {
+    "applied": true,
+    "boundary_month_observations": [
+      {
+        "month": "2018-06",
+        "order_count": 6167,
+        "order_item_demand": 7078
+      },
+      {
+        "month": "2018-07",
+        "order_count": 6292,
+        "order_item_demand": 7092
+      },
+      {
+        "month": "2018-08",
+        "order_count": 6512,
+        "order_item_demand": 7248
+      },
+      {
+        "month": "2018-09",
+        "order_count": 16,
+        "order_item_demand": 1
+      },
+      {
+        "month": "2018-10",
+        "order_count": 4,
+        "order_item_demand": 0
+      }
+    ],
+    "excluded_months": [
+      "2018-09"
+    ],
+    "excluded_order_item_rows": 1,
+    "reason": "Exclude right-censored trailing Olist demand periods after the configured usable end month; they are not treated as complete sales targets.",
+    "usable_demand_end_month": "2018-08"
+  }
+}

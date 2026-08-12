@@ -1,65 +1,100 @@
-import csv
-from pathlib import Path
+import json
+
+from src.logger import read_experiments
 
 
-LOG_FILE = Path("logs/experiments.csv")
+def get_best_run(
+    metric="validation_rmse",
+    log_path="logs/experiments.csv",
+):
+    experiments = read_experiments(log_path)
 
+    valid_runs = []
 
-def load_experiments():
-    """
-    Load all experiment records.
-    """
-    if not LOG_FILE.exists():
-        return []
+    for row in experiments:
+        if row.get("status") != "success":
+            continue
 
-    with LOG_FILE.open(
-        mode="r",
-        newline="",
-        encoding="utf-8"
-    ) as file:
-        reader = csv.DictReader(file)
-        return list(reader)
+        value = row.get(metric)
 
+        if value in (None, ""):
+            continue
 
-def get_best_run(metric="validation_rmse"):
-    """
-    Find the best experiment.
+        try:
+            row[metric] = float(value)
+        except ValueError:
+            continue
 
-    Lower values are better for:
-    - MAE
-    - MSE
-    - RMSE
+        valid_runs.append(row)
 
-    Higher values are better for:
-    - R²
-    """
-    experiments = load_experiments()
-
-    if len(experiments) == 0:
-        return None
-
-    if metric == "validation_r2":
-        return max(
-            experiments,
-            key=lambda x: float(x[metric])
+    if not valid_runs:
+        raise ValueError(
+            "No successful experiment runs were found."
         )
 
-    return min(
-        experiments,
-        key=lambda x: float(x[metric])
+    if metric == "validation_r2":
+        best_run = max(
+            valid_runs,
+            key=lambda row: row[metric],
+        )
+    else:
+        best_run = min(
+            valid_runs,
+            key=lambda row: row[metric],
+        )
+
+    return best_run
+
+
+def print_best_run(
+    metric="validation_rmse",
+    log_path="logs/experiments.csv",
+):
+    best = get_best_run(
+        metric=metric,
+        log_path=log_path,
     )
 
+    print("=" * 60)
+    print("BEST EXPERIMENT")
+    print("=" * 60)
 
-def print_best_run(metric="validation_rmse"):
-    best = get_best_run(metric)
+    print(f"Run ID: {best['run_id']}")
+    print(f"Model: {best['model']}")
 
-    if best is None:
-        print("No experiments found.")
-        return
+    params = best.get("params", "")
 
-    print("=" * 50)
-    print("BEST RUN")
-    print("=" * 50)
+    try:
+        params = json.loads(params)
+    except (json.JSONDecodeError, TypeError):
+        pass
 
-    for key, value in best.items():
-        print(f"{key}: {value}")
+    print(f"Parameters: {params}")
+
+    print(
+        "Validation MAE:",
+        best.get("validation_mae"),
+    )
+
+    print(
+        "Validation MSE:",
+        best.get("validation_mse"),
+    )
+
+    print(
+        "Validation RMSE:",
+        best.get("validation_rmse"),
+    )
+
+    print(
+        "Validation R2:",
+        best.get("validation_r2"),
+    )
+
+    print("=" * 60)
+
+    return best
+
+
+if __name__ == "__main__":
+    print_best_run()

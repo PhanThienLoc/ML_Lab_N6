@@ -1,11 +1,10 @@
-from pathlib import Path
 import csv
+import json
 from datetime import datetime
+from pathlib import Path
 
 
-LOG_DIR = Path("logs")
-EXPERIMENT_LOG = LOG_DIR / "experiments.csv"
-
+DEFAULT_LOG_PATH = Path("logs/experiments.csv")
 
 FIELDNAMES = [
     "run_id",
@@ -13,12 +12,13 @@ FIELDNAMES = [
     "dataset",
     "aggregation",
     "target",
+    "feature_version",
+    "split_method",
     "train_period",
     "validation_period",
     "test_period",
     "model",
     "params",
-    "feature_version",
     "train_mae",
     "train_mse",
     "train_rmse",
@@ -27,105 +27,70 @@ FIELDNAMES = [
     "validation_mse",
     "validation_rmse",
     "validation_r2",
+    "prediction_postprocessing",
     "status",
+    "notes",
 ]
 
 
-def _ensure_log_directory():
-    """Create the log directory if it does not already exist."""
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+def initialise_experiment_log(log_path=DEFAULT_LOG_PATH, *, overwrite=False):
+    """Create an experiment CSV, optionally replacing a previous batch.
 
+    The project uses fixed run IDs such as ``LR003``. A fresh official run must
+    therefore start with a fresh CSV; appending would create duplicate IDs and
+    make the evidence ambiguous.
+    """
 
-def _ensure_experiment_file():
-    """Create experiments.csv with the required header if needed."""
-    _ensure_log_directory()
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not EXPERIMENT_LOG.exists():
-        with EXPERIMENT_LOG.open(
-            mode="w",
-            newline="",
-            encoding="utf-8",
-        ) as file:
+    if overwrite or not log_path.exists():
+        with log_path.open("w", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
             writer.writeheader()
 
+    return log_path
 
-def log_experiment(
-    run_id,
-    dataset,
-    aggregation,
-    target,
-    train_period,
-    validation_period,
-    test_period,
-    model,
-    params,
-    feature_version,
-    train_metrics,
-    validation_metrics,
-    status="completed",
-):
-    """
-    Append one experiment result to experiments.csv.
 
-    Test metrics are intentionally not stored for regular experiments.
-    The test set is reserved for final evaluation.
-    """
-    _ensure_experiment_file()
+def _ensure_log_file(log_path=DEFAULT_LOG_PATH):
+    return initialise_experiment_log(log_path, overwrite=False)
 
-    row = {
-        "run_id": run_id,
-        "timestamp": datetime.now().isoformat(timespec="seconds"),
-        "dataset": dataset,
-        "aggregation": aggregation,
-        "target": target,
-        "train_period": train_period,
-        "validation_period": validation_period,
-        "test_period": test_period,
-        "model": model,
-        "params": str(params),
-        "feature_version": feature_version,
-        "train_mae": train_metrics.get("mae"),
-        "train_mse": train_metrics.get("mse"),
-        "train_rmse": train_metrics.get("rmse"),
-        "train_r2": train_metrics.get("r2"),
-        "validation_mae": validation_metrics.get("mae"),
-        "validation_mse": validation_metrics.get("mse"),
-        "validation_rmse": validation_metrics.get("rmse"),
-        "validation_r2": validation_metrics.get("r2"),
-        "status": status,
-    }
 
-    with EXPERIMENT_LOG.open(
-        mode="a",
-        newline="",
-        encoding="utf-8",
-    ) as file:
+def _serialize(value):
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False)
+
+    return value
+
+
+def log_experiment(record, log_path=DEFAULT_LOG_PATH):
+    log_path = _ensure_log_file(log_path)
+
+    row = {}
+
+    for field in FIELDNAMES:
+        row[field] = _serialize(record.get(field, ""))
+
+    if not row["timestamp"]:
+        row["timestamp"] = datetime.now().isoformat(timespec="seconds")
+
+    with log_path.open("a", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
         writer.writerow(row)
 
+    return log_path
 
-def read_experiments():
-    """
-    Read all experiment records from experiments.csv.
 
-    Returns
-    -------
-    list[dict]
-        A list of experiment records.
-    """
-    _ensure_experiment_file()
+def read_experiments(log_path=DEFAULT_LOG_PATH):
+    log_path = Path(log_path)
 
-    with EXPERIMENT_LOG.open(
-        mode="r",
-        newline="",
-        encoding="utf-8",
-    ) as file:
+    if not log_path.exists():
+        return []
+
+    with log_path.open("r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         return list(reader)
 
 
 def get_log_path():
-    """Return the path to the experiment log file."""
-    _ensure_experiment_file()
-    return EXPERIMENT_LOG
+    return DEFAULT_LOG_PATH

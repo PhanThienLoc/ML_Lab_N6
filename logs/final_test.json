@@ -1,0 +1,18 @@
+{
+    "dataset": "olist_brazilian_ecommerce",
+    "aggregation": "product_category_month",
+    "target": "sales_next_month",
+    "test_period": "2018-06..2018-08",
+    "selected_run": "LR003",
+    "model": "LinearRegressionScratch",
+    "params": {
+        "learning_rate": 0.005,
+        "epochs": 3000,
+        "tol": 1e-08
+    },
+    "prediction_postprocessing": "clip_to_zero_for_nonnegative_sales_count",
+    "test_mae": 18.681766326823563,
+    "test_mse": 1143.9507155380004,
+    "test_rmse": 33.822340479895836,
+    "test_r2": 0.9607883733245837
+}

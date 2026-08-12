@@ -1,108 +1,130 @@
-# Decision Log
+# Nhật ký quyết định
 
-This document records important decisions made during the development of the Product Sales Prediction project.
+## Decision 001 - Loại bài toán
 
----
+**Quyết định:** Supervised Learning Regression.
+**Lý do:** `sales_next_month` là biến mục tiêu dạng số (numerical/count), nên bài lab được mô hình hóa bằng supervised regression.
+**Tác động:** Dùng regression model và regression metric.
 
-## Decision 001 - Problem Type
+## Decision 002 - Mức tổng hợp
 
-### Decision
+**Quyết định:** `product_category x month`.
+**Lý do:** Phù hợp dự đoán doanh số category tháng kế tiếp.
+**Tác động:** Đây là đơn vị của processed dataset.
 
-The project is defined as a Supervised Learning Regression problem.
+## Decision 003 - Chia dữ liệu theo thời gian
 
-### Reason
+**Quyết định:** Train, validation, test theo thứ tự thời gian.
+**Lý do:** Forecasting không được dùng tương lai.
+**Tác động:** Validation chọn model; test chỉ đánh giá cuối.
 
-The target variable `sales_next_month` is a continuous numerical value, and the objective is to predict the sales value for the following month.
+## Decision 004 - Model
 
-### Impact
+**Quyết định:** Mean Baseline, Linear Regression Scratch, Decision Tree Scratch.
+**Lý do:** Đúng yêu cầu môn học.
+**Tác động:** TV2 cài đặt; TV3 đánh giá cùng split.
 
-Regression models and regression evaluation metrics will be used throughout the project.
+## Decision 005 - Metric
 
----
+**Quyết định:** MAE, MSE, RMSE và R².
+**Lý do:** Phù hợp regression.
+**Tác động:** TV3 ghi metric vào experiment log.
 
-## Decision 002 - Dataset Aggregation
+## Decision 006 - Cách dùng test set
 
-### Decision
+**Quyết định:** Không dùng test để chọn model/hyperparameter.
+**Lý do:** Tránh evaluation bias.
+**Tác động:** Chốt best run bằng validation trước final test.
 
-The dataset is aggregated at the `product_category × month` level.
+## Decision 007 - Chính sách completed sales (đã thay thế)
 
-### Reason
+**Quyết định MVP trước đây:** TV1 chỉ tổng hợp order `delivered`.
+**Trạng thái:** Thay thế bởi Decision 012 sau audit cutoff. Lý do: dùng final `delivered` status để chọn purchase event của tháng trước có thể tạo hindsight leakage.
 
-This aggregation is appropriate for predicting the sales of each product category in the following month.
+## Decision 008 - Calendar panel toàn cục trước shift (đã thay thế)
 
-### Impact
+**Quyết định MVP trước đây:** Hoàn tất grid category x global observed month trước lag/target.
+**Trạng thái:** Thay thế bởi Decision 011. Grid toàn cục tạo zero-demand pre-history và có thể đưa category xuất hiện ở validation/test ngược về train.
 
-The aggregated dataset will be used to construct features and the target variable `sales_next_month`.
+## Decision 009 - Missing transaction attribute
 
----
+**Quyết định:** Zero-sales gap chỉ forward-fill từ quá khứ cùng category; gap đầu kỳ dùng train median.
+**Lý do:** Future fill gây leakage; fallback train-only tái lập được.
+**Tác động:** Matrix hữu hạn mà không fit trên validation/test.
 
-## Decision 003 - Temporal Data Split
+## Decision 010 - Đơn vị split
 
-### Decision
+**Quyết định:** Split toàn bộ `target_month` theo thời gian.
+**Lý do:** Không được trộn cùng forecast period qua các split.
+**Tác động:** Mọi experiment dùng boundary trong metadata.
 
-The dataset is divided into training, validation, and test sets according to chronological order.
+## Decision 011 - Active window của category
 
-### Reason
+**Quyết định:** Lịch của từng category bắt đầu ở tháng `order_purchase_timestamp` đầu tiên được quan sát của category đó và kết thúc ở tháng quan sát cuối toàn cục.
+**Lý do:** Tháng thiếu sau khi category đã được quan sát có thể biểu diễn demand = 0; các tháng trước lần quan sát đầu tiên không có bằng chứng category đã tồn tại. Cách này không đưa category tương lai vào train dưới dạng zero row.
+**Tác động:** Lag vẫn liền tháng trong active window, nhưng không còn synthetic pre-history. First observed month không được diễn giải là ngày launch thực tế.
 
-The project is a time-dependent prediction problem. Future information must not be used to train the model or construct historical features.
+## Decision 012 - Định nghĩa sales theo purchase-time demand
 
-### Impact
+**Quyết định:** `sales_current` và `sales_next_month` đếm order-item demand tại `order_purchase_timestamp`, không lọc theo final `order_status`.
+**Lý do:** Purchase event đã tồn tại tại cutoff; trạng thái delivered/canceled có thể chỉ được biết sau cutoff. Điều này loại bỏ hindsight leakage.
+**Tác động:** Target là purchase-time demand (không phải delivered/fulfilled sales). Status vẫn được audit trong metadata/report nhưng không dùng để chọn record.
 
-The validation set is used for model and hyperparameter selection, while the test set is reserved for final evaluation.
+## Decision 013 - Seasonality dạng vòng
 
----
+**Quyết định:** Dùng `month_sin` và `month_cos`; bỏ `quarter` khỏi feature schema.
+**Lý do:** Month-of-year có tính chu kỳ, nên December và January cần gần nhau hơn là cách 11 đơn vị. `quarter` là hàm trực tiếp của month và không thêm tín hiệu độc lập.
+**Tác động:** TV2/TV3 phải lấy feature list theo `metadata['feature_names']`, không hard-code schema cũ.
 
-## Decision 004 - Machine Learning Models
+## Decision 014 - EDA trực quan tái lập được
 
-### Decision
+**Quyết định:** Pipeline TV1 tự sinh ba biểu đồ EDA từ active-window panel: total demand theo tháng, top 10 category theo demand và active category có positive/zero demand.
+**Lý do:** EDA phải dựa trên dữ liệu thật, tái tạo được và cho thấy rõ xu hướng, phân bố category và zero-demand month trước modeling.
+**Tác động:** Ảnh PNG nằm trong `reports/figures/`, được nhúng vào `reports/data_analysis.md` và không cần tạo/chỉnh tay.
 
-The project uses:
+## Decision 015 - Prediction policy cho sales count
 
-1. Mean Baseline
-2. Linear Regression from Scratch
-3. Decision Tree Regression from Scratch
+**Quyết định:** Áp dụng `max(0, raw_prediction)` cho mọi prediction của `sales_next_month` trước khi tính metric validation/final test hoặc trả về từ CLI.
+**Lý do:** Target là số order-item không âm; Linear Regression không bị ràng buộc nên có thể trả prediction âm.
+**Tác động:** Bảng experiment, `final_test.json` và CLI dùng cùng policy; không có sales âm được trả về.
 
-### Reason
+## Decision 016 - Model bundle cho inference
 
-These models provide a baseline and two required regression approaches for comparison.
+**Quyết định:** `logs/best_model.pkl` lưu model, train-only preprocessor, source feature schema, feature order và prediction policy trong cùng một bundle.
+**Lý do:** Inference không được refit preprocessing hoặc rebuild pipeline từ raw data; bundle đảm bảo dùng đúng state đã fit ở train.
+**Tác động:** `src.predict` nhận `--scenario-file`, transform bằng state đã lưu và không dùng test set làm scenario demo.
 
-### Impact
+## Decision 017 - Fresh experiment batch
 
-All models will be evaluated using the same validation metrics.
+**Quyết định:** Official experiment runner tự ghi đè `logs/experiments.csv` bằng header mới trước batch tám run cố định.
+**Lý do:** Run ID như `LR003` là định danh batch chính thức; append lặp làm log mơ hồ và phá tính duy nhất của run ID.
+**Tác động:** Mỗi lần chạy main tạo đúng tám record hiện hành; lựa chọn best run đọc validation metric từ batch đó.
 
----
+## Decision 018 - Trailing incomplete Olist period
 
-## Decision 005 - Evaluation Metrics
+**Quyết định:** Chỉ dùng purchase-time demand đến 2018-08; loại các period sau cutoff trước aggregate, calendar, lag, target và split.
+**Lý do:** Raw order-item demand là 7.078 (2018-06), 7.092 (2018-07), 7.248 (2018-08), nhưng chỉ 1 ở 2018-09. Đây là right-censoring/trailing incomplete period, không phải monthly sales target bình thường.
+**Tác động:** Test target months là 2018-06..2018-08; mọi metrics/log/model artifact được tái tạo từ boundary này. Không metric nào bị chỉnh hoặc loại thủ công.
 
-### Decision
+## Chiến lược prompt TV1
 
-The project uses:
+MVP TV1 ban đầu dùng một master prompt, được giữ tại `ai/prompts/00_tv1_master_prompt.md`. Sau khi xác nhận yêu cầu cần AI prompt cho từng giai đoạn, code hiện có được tách thành prompt scope nhỏ và **chạy thật** để inspect, verify, test và chỉ refine khi cần; đây không phải lịch sử prompt giả.
 
-- MAE
-- MSE
-- RMSE
-- R²
+- 01: audit raw data
+- 02: join và cleaning
+- 03: category-month aggregation
+- 04: temporal feature/target
+- 05: temporal split/preprocessing
+- 06: test
+- 07: report/handoff
+- 08: final audit
+- 09: category active-window correction
+- 10: sales cutoff/hindsight correction
+- 11: reproducible EDA visuals
+- 12: scratch-model review
+- 13: experiment logging and validation-selection review
+- 14: inference bundle and non-negative count policy
+- 15: full project final audit
+- 16: trailing incomplete-period boundary audit
 
-### Reason
-
-These metrics are appropriate for evaluating regression models and provide different views of prediction error and model performance.
-
-### Impact
-
-The validation metrics will be recorded in the experiment log and used to compare different runs.
-
----
-
-## Decision 006 - Test Set Usage
-
-### Decision
-
-The test set will only be used for final evaluation.
-
-### Reason
-
-Using the test set during model selection would introduce evaluation bias and violate the separation between model selection and final evaluation.
-
-### Impact
-
-The best model must be selected using validation performance before the final test evaluation is performed.
+Bằng chứng thực thi nằm trong `ai/results/`.

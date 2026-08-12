@@ -1,40 +1,11 @@
-# Olist Join and Cleaning
+# Prompt 02 - Join and Cleaning
 
-## Context
+Review and refine only the existing Olist join/cleaning stage. Verify orders -> order_items on `order_id`, items -> products on `product_id`, and products -> category translation on `product_category_name`. For every join inspect left/right rows, key uniqueness/cardinality, output rows, duplicate rows, unmatched joins, and unexpected row multiplication.
 
-The project uses Olist datasets containing information about orders, order items, products, and product category translations.
+Inspect order-status handling, missing categories, duplicates, invalid price/freight/timestamps, and whether the purchase-time demand policy is defensible from actual Olist data. Do not redesign later features, construct models, use sklearn, fabricate data, modify raw files, or silently drop material data. If a proven issue exists, explain it, fix only the relevant code, rerun checks, and update report/log only when findings change.
 
-## Task
+Report join plan, cardinality evidence, cleaning rules, problems, changes, tests/checks, and PASS/FAIL.
 
-Design a data joining and cleaning plan before constructing the `product_category × month` dataset.
+## Output language
 
-## Required Analysis
-
-1. Identify the join key for each dataset.
-2. Identify the cardinality of each join.
-3. Check for duplicate keys.
-4. Check for missing values.
-5. Define the policy for order status.
-6. Check for invalid values.
-7. Identify potential data leakage risks.
-
-## Constraints
-
-- Do not use future information.
-- Do not fabricate data that does not exist in the source datasets.
-- Explain the reason for every important cleaning rule.
-- Do not use the test set during feature construction.
-- Preserve data consistency after joining.
-
-## Expected Output
-
-The analysis should provide:
-
-- Join plan.
-- Join keys.
-- Join cardinality.
-- Cleaning rules.
-- Missing-value handling rules.
-- Duplicate checks.
-- Invalid-value checks.
-- Data leakage risks.
+Write all user-facing findings, reports, result summaries, and documentation updates in Vietnamese. Keep code, commands, filenames, column names, and identifiers in English.
