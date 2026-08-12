@@ -118,7 +118,7 @@ train + validation metrics (count prediction clipped at 0)
   → predict a new CSV scenario without rebuilding the pipeline
 ```
 
-Batch hiện hành có 8 run duy nhất, tất cả success. `LR003` được chọn với validation RMSE 46.0037; final test RMSE là 33.8225 trên June–August hoàn chỉnh. `logs/experiments.csv` tự reset ở đầu mỗi official run để `run_id` không bị lặp.
+Batch hiện hành có 8 run duy nhất, tất cả success. `LR003` được chọn với validation RMSE 45.9968; theo `logs/final_test.json`, final test RMSE là 33.8223 trên June–August hoàn chỉnh. `logs/experiments.csv` tự reset ở đầu mỗi official run để `run_id` không bị lặp.
 
 ## 7. Kiểm chứng và AI traceability
 

@@ -111,8 +111,8 @@ Kết quả hiện hành:
 
 ```text
 Best run: LR003
-Validation RMSE: 46.0037
-Final test RMSE: 33.8225
+Validation RMSE: 45.9968
+Final test RMSE: 33.8223
 ```
 
 Xem log và final result:

@@ -196,7 +196,7 @@ Phụ trách:
 ## 5. Cấu trúc project
 
 ```text
-ML_Lab_N6-feature-data-pipeline/
+ML_Lab_N6/
 │
 ├── main.py
 ├── README.md
@@ -633,7 +633,7 @@ Kết quả:
 | BASE001 | MeanBaseline | 120.6339 | 187.5014 | -0.0162 |
 | LR001 | LinearRegressionScratch | 24.4940 | 46.8873 | 0.9365 |
 | LR002 | LinearRegressionScratch | 23.9140 | 46.4505 | 0.9376 |
-| LR003 | LinearRegressionScratch | **22.6835** | **46.0037** | **0.9388** |
+| LR003 | LinearRegressionScratch | **22.6869** | **45.9968** | **0.9388** |
 | LR004 | LinearRegressionScratch | 22.7687 | 46.1780 | 0.9384 |
 | TREE001 | DecisionTreeRegressorScratch | 38.1281 | 73.4563 | 0.8440 |
 | TREE002 | DecisionTreeRegressorScratch | 35.5093 | 77.9657 | 0.8243 |
@@ -664,7 +664,7 @@ Best Run: LR003
 Best Model: LinearRegressionScratch
 
 Validation MAE: 22.6835
-Validation RMSE: 46.0037
+Validation RMSE: 45.9968
 Validation R²: 0.9388
 ```
 
@@ -678,7 +678,7 @@ LR004 MAE = 22.7687
 LR003 có Validation RMSE thấp hơn LR004:
 
 ```text
-LR003 RMSE = 46.0037
+LR003 RMSE = 45.9968
 LR004 RMSE = 46.1780
 ```
 
@@ -718,9 +718,9 @@ Kết quả:
 Selected Run: LR003
 Model: LinearRegressionScratch
 
-Test MAE: 18.6781
-Test MSE: 1143.9581
-Test RMSE: 33.8225
+Test MAE: 18.6818
+Test MSE: 1143.9507
+Test RMSE: 33.8223
 Test R²: 0.9608
 ```
 
@@ -929,7 +929,7 @@ Best model hiện tại:
 ```text
 Best Run: LR003
 Best Model: LinearRegressionScratch
-Validation RMSE: 46.0037
+Validation RMSE: 45.9968
 ```
 
 ---
@@ -1134,7 +1134,7 @@ Project hiện tại có một số hạn chế:
 
 4. Project chưa áp dụng một quy tắc loại bỏ outlier toàn cục.
 
-5. Final test hiện có RMSE thấp hơn validation (33.8225 so với 46.0037), nhưng test chỉ gồm ba tháng hoàn chỉnh (2018-06..2018-08). Kết quả này không đủ để khẳng định mô hình ổn định ở mọi future period hoặc thị trường khác.
+5. Final test hiện có RMSE thấp hơn validation (33.8223 so với 45.9968), nhưng test chỉ gồm ba tháng hoàn chỉnh (2018-06..2018-08). Kết quả này không đủ để khẳng định mô hình ổn định ở mọi future period hoặc thị trường khác.
 
 6. Scenario inference yêu cầu người dùng cung cấp đầy đủ feature-month fields hợp lệ; project chưa tự thu thập các field này từ một hệ thống vận hành thời gian thực.
 
@@ -1203,16 +1203,16 @@ Run: LR003
 Model: LinearRegressionScratch
 
 Validation MAE: 22.6835
-Validation RMSE: 46.0037
+Validation RMSE: 45.9968
 Validation R²: 0.9388
 ```
 
 ### Final Test
 
 ```text
-Test MAE: 18.6781
-Test MSE: 1143.9581
-Test RMSE: 33.8225
+Test MAE: 18.6818
+Test MSE: 1143.9507
+Test RMSE: 33.8223
 Test R²: 0.9608
 ```
 
@@ -1263,9 +1263,9 @@ LR003 - LinearRegressionScratch
 Final test:
 
 ```text
-MAE  = 18.6781
-MSE  = 1143.9581
-RMSE = 33.8225
+MAE  = 18.6818
+MSE  = 1143.9507
+RMSE = 33.8223
 R²   = 0.9608
 ```
 
