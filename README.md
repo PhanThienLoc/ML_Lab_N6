@@ -524,10 +524,7 @@ NumPy được sử dụng để tính toán vector và ma trận.
 
 Pandas được sử dụng để xử lý dữ liệu.
 
-Matplotlib được sử dụng để sinh biểu đồ EDA.
-
----
-
+Matplotlib được sử dụng để sinh biểu đồ EDA và trực quan hóa kết quả model/experiment.
 ## 13. Evaluation Metrics
 
 Project sử dụng bốn metric.
@@ -611,6 +608,12 @@ Mỗi experiment lưu các thông tin như:
 Test metrics không được sử dụng để xếp hạng các model trong quá trình tuning.
 
 Mỗi lần chạy `python main.py` hoặc `python -m src.run_experiments` tự tạo một batch log mới. Điều này giữ tám `run_id` chính thức là duy nhất, không append lặp kết quả cũ.
+### Tài liệu kết quả Model Training
+
+Artifact chính dùng để theo dõi quá trình model training và model selection là:
+
+```text
+logs/experiments.csv
 
 ---
 
@@ -690,7 +693,12 @@ Do tiêu chí chọn model chính thức là Validation RMSE nên LR003 được
 Test set không được sử dụng để đưa ra quyết định này.
 
 ---
+### 16.1. Model Visualization và Model Comparison
 
+Để trực quan hóa kết quả các experiment, project bổ sung module:
+
+```text
+src/visualize_results.py
 ## 17. Final Model Training
 
 Sau khi LR003 được chọn bằng validation set:
@@ -740,7 +748,12 @@ logs/best_model.pkl
 ```
 
 Final test RMSE thấp hơn validation RMSE trên ba tháng June–August hoàn chỉnh. Điều này không thay thế validation-based selection và không chứng minh mô hình sẽ ổn định ở mọi future period; test window chỉ có ba tháng, nên kết quả cần được diễn giải cùng giới hạn time window này.
+### Tài liệu Model Evaluation
 
+Artifact chính của bước đánh giá model cuối cùng là:
+
+```text
+logs/final_test.json
 ---
 
 ## 19. Automated Tests
@@ -1065,8 +1078,9 @@ Reports:
 
 ```text
 reports/data_analysis.md
+reports/model_comparison.md
 reports/figures/
-```
+reports/figures/model_validation_rmse.png
 
 ---
 
@@ -1192,7 +1206,12 @@ Test:       219
 ```
 
 ### Experiments
+### Model Visualization
 
+```text
+Visualization: Validation RMSE comparison
+Output: reports/figures/model_validation_rmse.png
+Report: reports/model_comparison.md
 ```text
 8 experiments
 8 success
