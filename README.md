@@ -1225,7 +1225,7 @@ Trong đó:
 - `reports/data_analysis.md`: báo cáo Data Analysis và EDA.
 - `reports/model_comparison.md`: báo cáo tổng hợp và so sánh các model.
 - `reports/figures/model_validation_rmse.png`: biểu đồ trực quan hóa Validation RMSE của các experiment.
-- ### Tài liệu và output theo từng giai đoạn
+ ### Tài liệu và output theo từng giai đoạn
 
 | Giai đoạn | Code chính | Tài liệu / Output |
 |---|---|---|
