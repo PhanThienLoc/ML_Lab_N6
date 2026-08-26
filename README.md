@@ -1075,11 +1075,10 @@ Save Best Model
 
 ### Xem Best Model
 
-````markdown
-### Xem Best Model
-
 ```powershell
 python -m src.analyze_logs
+```
+
 Best model hiện tại:
 
 ```text
@@ -1089,6 +1088,39 @@ Validation RMSE: 45.9968
 ```
 
 ---
+
+### Tạo Model Visualization và Model Comparison Report
+
+Sau khi experiment và final test đã hoàn tất, chạy:
+
+```powershell
+python -m src.visualize_results
+```
+
+Module này đọc trực tiếp:
+
+```text
+logs/experiments.csv
+logs/final_test.json
+```
+
+và sinh:
+
+```text
+reports/figures/model_validation_rmse.png
+reports/model_comparison.md
+```
+
+Trong đó:
+
+- `model_validation_rmse.png` là biểu đồ so sánh Validation RMSE giữa các experiment.
+- `model_comparison.md` là tài liệu tổng hợp kết quả Model Training, Model Selection và Final Evaluation.
+- Visualization không train lại model.
+- Best model vẫn được chọn bằng Validation RMSE trên Validation Set.
+- Test Set không được sử dụng để chọn model.
+
+---
+
 
 ### Xem Final Test
 
@@ -1108,7 +1140,6 @@ python -m src.predict --scenario-file examples\prediction_scenario.csv
 
 ## 22. Lệnh chạy toàn bộ bài từ đầu đến cuối
 
-```powershell
 python -m src.run_data_pipeline --raw-dir data/raw
 
 python -m pytest -q
@@ -1117,12 +1148,11 @@ python -m src.run_experiments
 
 python -m src.analyze_logs
 
+python -m src.visualize_results
+
 Get-Content logs\final_test.json
 
 python -m src.predict --scenario-file examples\prediction_scenario.csv
-```
-
----
 
 ## 23. Đối chiếu với yêu cầu bài Lab
 
