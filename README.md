@@ -614,9 +614,40 @@ Artifact chính dùng để theo dõi quá trình model training và model selec
 
 ```text
 logs/experiments.csv
+```
 
----
+Mỗi dòng trong file tương ứng với một experiment hoặc một model configuration.
 
+Các thông tin chính bao gồm:
+
+```text
+run_id
+model
+hyperparameters
+train_period
+validation_period
+training_metrics
+validation_metrics
+status
+```
+
+Flow của quá trình experiment:
+
+```text
+Model + Hyperparameters
+        ↓
+Train trên Training Set
+        ↓
+Predict trên Validation Set
+        ↓
+MAE / MSE / RMSE / R²
+        ↓
+logs/experiments.csv
+```
+
+Nhờ experiment log, nhóm có thể kiểm tra model nào đã được chạy, hyperparameter nào được sử dụng, validation metric đạt bao nhiêu và run nào được chọn làm best model.
+
+Test Set không được sử dụng để xếp hạng các experiment.
 ## 15. Các experiment đã chạy
 
 Project chạy 8 experiment chính thức:
@@ -699,6 +730,78 @@ Test set không được sử dụng để đưa ra quyết định này.
 
 ```text
 src/visualize_results.py
+```
+
+Module này không train lại model và không thay đổi kết quả model selection.
+
+Module đọc trực tiếp kết quả từ:
+
+```text
+logs/experiments.csv
+logs/final_test.json
+```
+
+và sinh hai artifact:
+
+```text
+reports/model_comparison.md
+reports/figures/model_validation_rmse.png
+```
+
+#### Validation RMSE Visualization
+
+Biểu đồ `model_validation_rmse.png` được sử dụng để so sánh Validation RMSE giữa 8 experiment:
+
+```text
+BASE001
+LR001
+LR002
+LR003
+LR004
+TREE001
+TREE002
+TREE003
+```
+
+Validation RMSE càng thấp thì model càng tốt theo tiêu chí lựa chọn chính thức của project.
+
+Kết quả hiện tại:
+
+```text
+Mean Baseline:
+Validation RMSE = 187.5014
+
+Best Decision Tree:
+TREE003
+Validation RMSE = 72.1061
+
+Best Linear Regression:
+LR003
+Validation RMSE = 45.9968
+```
+
+LR003 có Validation RMSE thấp nhất nên được chọn làm best run.
+
+#### Model Comparison Report
+
+Báo cáo tổng hợp kết quả model được lưu tại:
+
+```text
+reports/model_comparison.md
+```
+
+Báo cáo bao gồm:
+
+- Kết quả của 8 experiment.
+- Validation MAE.
+- Validation RMSE.
+- Validation R².
+- Biểu đồ so sánh Validation RMSE.
+- Best run và best model.
+- Final test metrics.
+- Kết luận lựa chọn model.
+
+Các giá trị được đọc trực tiếp từ experiment log và final test result thay vì nhập thủ công.
 ## 17. Final Model Training
 
 Sau khi LR003 được chọn bằng validation set:
@@ -754,7 +857,42 @@ Artifact chính của bước đánh giá model cuối cùng là:
 
 ```text
 logs/final_test.json
----
+```
+
+File này lưu các thông tin chính:
+
+```text
+dataset
+aggregation
+target
+test_period
+selected_run
+model
+hyperparameters
+prediction_postprocessing
+test_mae
+test_mse
+test_rmse
+test_r2
+```
+
+Quy trình evaluation:
+
+```text
+Training Set
+     ↓
+Validation Set
+     ↓
+Chọn best configuration
+     ↓
+Train lại trên Train + Validation
+     ↓
+Final Test
+     ↓
+logs/final_test.json
+```
+
+Test Set chỉ được sử dụng sau khi best configuration đã được chọn bằng Validation Set.
 
 ## 19. Automated Tests
 
@@ -1079,10 +1217,31 @@ Reports:
 ```text
 reports/data_analysis.md
 reports/model_comparison.md
-reports/figures/
 reports/figures/model_validation_rmse.png
+```
 
----
+Trong đó:
+
+- `reports/data_analysis.md`: báo cáo Data Analysis và EDA.
+- `reports/model_comparison.md`: báo cáo tổng hợp và so sánh các model.
+- `reports/figures/model_validation_rmse.png`: biểu đồ trực quan hóa Validation RMSE của các experiment.
+- ### Tài liệu và output theo từng giai đoạn
+
+| Giai đoạn | Code chính | Tài liệu / Output |
+|---|---|---|
+| Data Preparation | `src/data_loader.py`, `src/build_dataset.py` | `logs/data_quality.log` |
+| EDA | `src/eda.py` | `reports/data_analysis.md`, `reports/figures/` |
+| Feature Engineering | `src/features.py` | `data/processed/category_month_sales.csv` |
+| Preprocessing | `src/preprocessing.py` | `data/processed/preprocessing_metadata.json` |
+| Model Implementation | `src/models/` | Mean Baseline, Linear Regression Scratch, Decision Tree Scratch |
+| Metrics | `src/metrics.py` | MAE, MSE, RMSE, R² |
+| Model Training / Experiment | `src/experiment.py`, `src/run_experiments.py` | `logs/experiments.csv` |
+| Experiment Analysis | `src/analyze_logs.py` | Best run / best hyperparameters |
+| Model Visualization | `src/visualize_results.py` | `reports/figures/model_validation_rmse.png` |
+| Model Comparison | `src/visualize_results.py` | `reports/model_comparison.md` |
+| Final Evaluation | Experiment Pipeline | `logs/final_test.json` |
+| Model Serialization | Experiment Pipeline | `logs/best_model.pkl` |
+| Prediction Demo | `src/predict.py` | Next-month sales prediction |
 
 ## 25. AI Workflow
 
@@ -1206,16 +1365,19 @@ Test:       219
 ```
 
 ### Experiments
+
+```text
+8 experiments
+8 success
+0 failed
+```
+
 ### Model Visualization
 
 ```text
 Visualization: Validation RMSE comparison
 Output: reports/figures/model_validation_rmse.png
 Report: reports/model_comparison.md
-```text
-8 experiments
-8 success
-0 failed
 ```
 
 ### Best Model
@@ -1264,6 +1426,8 @@ Regression Metrics               DONE
 Experiment Logger                DONE
 Experiment Runner                DONE
 Hyperparameter Experiments       DONE
+Model Result Visualization       DONE
+Model Comparison Report          DONE
 
 Best Model Selection             DONE
 Final Model Training             DONE
