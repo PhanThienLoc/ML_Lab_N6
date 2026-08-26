@@ -223,6 +223,7 @@ ML_Lab_N6/
 │   ├── experiment.py
 │   ├── analyze_logs.py
 │   ├── run_experiments.py
+│   ├── visualize_results.py
 │   ├── predict.py
 │   │
 │   └── models/
@@ -245,7 +246,9 @@ ML_Lab_N6/
 │
 ├── reports/
 │   ├── data_analysis.md
+│   ├── model_comparison.md
 │   └── figures/
+│       └── model_validation_rmse.png
 │
 └── ai/
     ├── AI_RULES.md
