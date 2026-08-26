@@ -176,22 +176,23 @@ Phụ trách:
 
 Các thuật toán ML chính được tự cài đặt và không sử dụng estimator dựng sẵn từ scikit-learn.
 
-### Thành viên 3 - Experiment, Evaluation & Integration
+### Thành viên 3 - AI Workflow, Experiment, Evaluation & Integration
 
 Phụ trách:
 
+- Quản lý AI Workflow và các AI artefact.
 - Regression metrics.
 - Experiment runner.
 - Experiment logger.
 - Hyperparameter experiments.
 - Phân tích experiment log.
+- Trực quan hóa kết quả experiment.
+- Sinh Model Comparison Report.
 - Chọn best run.
 - Final test evaluation.
 - Tích hợp pipeline hoàn chỉnh.
 - Lưu best model.
 - Prediction demo.
-
----
 
 ## 5. Cấu trúc project
 
