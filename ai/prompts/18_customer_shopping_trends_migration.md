@@ -1,0 +1,2 @@
+You are executing the Customer Shopping Trends migration plan. Inspect the supplied shopping_trends.csv and lab2.ipynb, implement the current-record supervised regression pipeline, run EDA, train-only preprocessing, random 70/15/15 split with seed 42, scratch models, inference bundle, tests, and documentation. Use only factual data, preserve Olist history as archive, and report files changed and commands/tests executed.
+

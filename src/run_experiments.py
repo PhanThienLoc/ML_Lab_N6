@@ -86,7 +86,7 @@ def get_period(
 
 def main():
     print("=" * 70)
-    print("OLIST PRODUCT SALES - FULL EXPERIMENT PIPELINE")
+    print("CUSTOMER SHOPPING TRENDS - FULL REGRESSION PIPELINE")
     print("=" * 70)
 
     print("\n[1] Loading and preparing data...")
@@ -110,16 +110,16 @@ def main():
     )
 
     metadata = {
-        "dataset": "olist_brazilian_ecommerce",
-        "aggregation": "product_category_month",
-        "target": "sales_next_month",
+        "dataset": "customer_shopping_trends",
+        "aggregation": "current_purchase_record",
+        "target": "product_sales_amount_usd",
         "feature_version": str(
             source_metadata.get(
                 "feature_version",
                 "v1",
             )
         ),
-        "split_method": "temporal",
+        "split_method": "random_70_15_15",
         "train_period": get_period(
             source_metadata,
             "train",
@@ -368,6 +368,7 @@ def main():
         "selected_run": best_config["run_id"],
         "model": best_config["model_name"],
         "params": best_config["params"],
+        "train_reference": prepared["split_frames"]["train"],
         "prediction_postprocessing": PREDICTION_POLICY_NAME,
         "test_mae": test_metrics["mae"],
         "test_mse": test_metrics["mse"],

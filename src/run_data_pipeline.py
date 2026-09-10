@@ -9,7 +9,7 @@ from src.pipeline import prepare_data
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build the leakage-safe Olist TV1 handoff.")
+    parser = argparse.ArgumentParser(description="Build the Customer Shopping Trends regression handoff.")
     parser.add_argument("--raw-dir", default="data/raw", help="Directory containing the four Olist CSV files.")
     parser.add_argument("--processed-dir", default="data/processed", help="Directory for generated CSV and metadata.")
     parser.add_argument("--report-dir", default="reports", help="Directory for generated TV1 Markdown reports.")
@@ -21,12 +21,12 @@ def main() -> None:
         report_dir=Path(args.report_dir),
         log_path=Path(args.log_path),
     )
-    split = prepared["metadata"]["temporal_split"]
+    split = {"train": len(prepared["y_train"]), "validation": len(prepared["y_val"]), "test": len(prepared["y_test"])}
     print("TV1 pipeline completed.")
     print(f"Processed rows: {len(prepared['processed_dataset'])}")
     print("Target-month splits:")
-    for name, details in split.items():
-        print(f"  {name}: {details['target_month_start']}..{details['target_month_end']} ({details['rows']} rows)")
+    for name, rows in split.items():
+        print(f"  {name}: {rows} rows")
     print(f"Model features: {len(prepared['metadata']['feature_names'])}")
 
 
