@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.prediction_policy import PREDICTION_POLICY_NAME, postprocess_sales_predictions
+from src.features import engineer_features
 
 
 MODEL_PATH = Path("logs/best_model.pkl")
@@ -48,7 +49,13 @@ def predict_scenarios(bundle: dict[str, Any], scenarios: pd.DataFrame) -> np.nda
     """Transform new scenarios with saved train state and predict non-negative sales."""
 
     preprocessor = bundle["preprocessor"]
-    matrix = preprocessor.transform(scenarios)
+    reference = bundle.get("train_reference")
+    if "Frequency of Purchases" in scenarios.columns:
+        enriched, _ = engineer_features(scenarios, train_frame=reference)
+    else:
+        # Backward-compatible direct transform for unit-test/minimal bundles.
+        enriched = scenarios
+    matrix = preprocessor.transform(enriched)
     if list(matrix.columns) != list(bundle["feature_names"]):
         raise AssertionError("Scenario transformation did not preserve the saved feature order.")
     raw_predictions = bundle["model"].predict(matrix)
