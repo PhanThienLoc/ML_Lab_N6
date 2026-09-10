@@ -22,5 +22,5 @@ python -m src.predict --scenario-file examples/prediction_scenario.csv
 
 Pipeline dùng random split 70/15/15, seed 42, preprocessing và popularity mappings fit trên train. Kết quả nằm tại data/processed/, reports/figures/, logs/.
 
-Lịch sử Olist và các prompt audit cũ được giữ trong ai/ như archive/superseded record.
+Các prompt migration được lưu trong ai/ để truy xuất quy trình phát triển.
 

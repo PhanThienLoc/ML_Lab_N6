@@ -10,7 +10,7 @@ from src.pipeline import prepare_data
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the Customer Shopping Trends regression handoff.")
-    parser.add_argument("--raw-dir", default="data/raw", help="Directory containing the four Olist CSV files.")
+    parser.add_argument("--raw-dir", default="data/raw", help="Directory containing shopping_trends.csv.")
     parser.add_argument("--processed-dir", default="data/processed", help="Directory for generated CSV and metadata.")
     parser.add_argument("--report-dir", default="reports", help="Directory for generated TV1 Markdown reports.")
     parser.add_argument("--log-path", default="logs/data_quality.log", help="Generated TV1 data-quality log path.")

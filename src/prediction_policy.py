@@ -12,7 +12,7 @@ def postprocess_sales_predictions(predictions) -> np.ndarray:
     """Return finite product-sales count predictions constrained to zero or above.
 
     The scratch Linear Regression model is unconstrained and can return a
-    negative number even though ``sales_next_month`` is an order-item count.
+    negative number even though ``product_sales_amount_usd`` is non-negative.
     The same post-processing is therefore applied during validation, final
     test evaluation, and CLI inference.
     """

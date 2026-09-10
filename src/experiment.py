@@ -27,15 +27,15 @@ def run_experiment(
         "run_id": run_id,
         "dataset": metadata.get(
             "dataset",
-            "olist_brazilian_ecommerce",
+            "customer_shopping_trends",
         ),
         "aggregation": metadata.get(
             "aggregation",
-            "product_category_month",
+            "current_purchase_record",
         ),
         "target": metadata.get(
             "target",
-            "sales_next_month",
+            "product_sales_amount_usd",
         ),
         "feature_version": metadata.get(
             "feature_version",

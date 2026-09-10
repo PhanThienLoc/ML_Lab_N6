@@ -1,11 +1,9 @@
-# Prompt traceability — migration
+# Prompt traceability — Customer Shopping Trends
 
 | Prompt | Công việc | Code liên quan | Evidence | Test |
 |---|---|---|---|---|
-| customer_shopping_trends_migration | Migrate Olist sang Customer Shopping Trends | data_loader, build_dataset, features, preprocessing, pipeline | pipeline artifacts + logs | pytest |
-| 15 | Full project audit | toàn project | result 15 | PASS |
-| 16 | Incomplete period archive review | Olist archive | result 16 | PASS |
-| 18 | Customer Shopping Trends migration execution | toàn TV1 | migration artifacts | pytest + main |
+| customer_shopping_trends_migration | Migration và pipeline hiện hành | data_loader, build_dataset, features, preprocessing, pipeline | artifacts + logs | pytest |
+| 18 | Final migration execution | toàn pipeline | result 18 | 16 passed |
 
-ai/results chứa bản tóm tắt kết quả thực thi/kiểm chứng, không phải raw AI transcript.
+ai/results chứa bản tóm tắt kết quả thực thi, không phải raw AI transcript.
 
