@@ -1,15 +1,15 @@
-"""Inference policy for the non-negative product-sales target."""
+"""Inference policy for the non-negative purchase-amount target."""
 
 from __future__ import annotations
 
 import numpy as np
 
 
-PREDICTION_POLICY_NAME = "clip_to_zero_for_nonnegative_sales_count"
+PREDICTION_POLICY_NAME = "clip_to_zero_for_nonnegative_purchase_amount"
 
 
 def postprocess_sales_predictions(predictions) -> np.ndarray:
-    """Return finite product-sales count predictions constrained to zero or above.
+    """Return finite purchase-amount predictions constrained to zero or above.
 
     The scratch Linear Regression model is unconstrained and can return a
     negative number even though ``product_sales_amount_usd`` is non-negative.

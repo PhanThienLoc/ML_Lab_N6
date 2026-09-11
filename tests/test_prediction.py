@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from src.predict import predict_scenarios
-from src.prediction_policy import postprocess_sales_predictions
+from src.prediction_policy import PREDICTION_POLICY_NAME, postprocess_sales_predictions
 from src.preprocessing import fit_preprocessor
 
 
@@ -13,12 +13,13 @@ class NegativeModel:
         return np.array([-3.0] * len(X))
 
 
-def test_count_prediction_policy_clips_negative_values() -> None:
+def test_purchase_amount_policy_clips_negative_values() -> None:
+    assert PREDICTION_POLICY_NAME == "clip_to_zero_for_nonnegative_purchase_amount"
     clipped = postprocess_sales_predictions(np.array([-2.5, 0.0, 4.0]))
     assert np.array_equal(clipped, np.array([0.0, 0.0, 4.0]))
 
 
-def test_prediction_uses_saved_preprocessor_and_keeps_count_nonnegative() -> None:
+def test_prediction_uses_saved_preprocessor_and_keeps_amount_nonnegative() -> None:
     train = pd.DataFrame(
         {
             "sales_current": [1.0, 3.0],
@@ -30,7 +31,7 @@ def test_prediction_uses_saved_preprocessor_and_keeps_count_nonnegative() -> Non
         "model": NegativeModel(),
         "preprocessor": preprocessor,
         "feature_names": list(preprocessor.feature_names),
-        "prediction_postprocessing": "clip_to_zero_for_nonnegative_sales_count",
+        "prediction_postprocessing": "clip_to_zero_for_nonnegative_purchase_amount",
     }
     new_scenario = pd.DataFrame(
         {"sales_current": [10.0], "product_category": ["new_category"]}

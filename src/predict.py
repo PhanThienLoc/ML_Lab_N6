@@ -1,4 +1,4 @@
-"""CLI inference for new product-category monthly scenarios."""
+"""CLI inference for new Customer Shopping Trends purchase scenarios."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def load_model_bundle(model_path: str | Path = MODEL_PATH) -> dict[str, Any]:
 
 
 def load_scenario_file(path: str | Path) -> pd.DataFrame:
-    """Load one or more raw, feature-month scenarios from a CSV file."""
+    """Load one or more raw purchase scenarios from a CSV file."""
 
     scenario_path = Path(path)
     if not scenario_path.exists():
@@ -46,7 +46,7 @@ def load_scenario_file(path: str | Path) -> pd.DataFrame:
 
 
 def predict_scenarios(bundle: dict[str, Any], scenarios: pd.DataFrame) -> np.ndarray:
-    """Transform new scenarios with saved train state and predict non-negative sales."""
+    """Transform scenarios with saved train state and predict non-negative amounts."""
 
     preprocessor = bundle["preprocessor"]
     reference = bundle.get("train_reference")
@@ -64,12 +64,12 @@ def predict_scenarios(bundle: dict[str, Any], scenarios: pd.DataFrame) -> np.nda
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Predict next-month product sales for one or more new feature-month scenarios."
+        description="Predict Purchase Amount (USD) for one or more purchase scenarios."
     )
     parser.add_argument(
         "--scenario-file",
         required=True,
-        help="CSV containing raw feature-month fields; see examples/prediction_scenario.csv.",
+        help="CSV containing raw purchase fields; see examples/prediction_scenario.csv.",
     )
     parser.add_argument(
         "--model-path",
@@ -83,13 +83,13 @@ def main() -> None:
     predictions = predict_scenarios(bundle, scenarios)
 
     print("=" * 60)
-    print("PRODUCT SALES PREDICTION DEMO")
+    print("PURCHASE AMOUNT PREDICTION DEMO")
     print("=" * 60)
     print(f"Model: {bundle.get('model_name', 'unknown')}")
     print(f"Scenarios: {len(scenarios)}")
-    print("Policy: sales predictions are clipped to a minimum of 0.")
+    print("Policy: Purchase Amount predictions are clipped to a minimum of 0 USD.")
     for index, prediction in enumerate(predictions, start=1):
-        print(f"Scenario {index}: predicted next-month sales = {prediction:.4f}")
+        print(f"Scenario {index}: predicted Purchase Amount = {prediction:.4f} USD")
     print("=" * 60)
 
 

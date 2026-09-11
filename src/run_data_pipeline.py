@@ -24,7 +24,7 @@ def main() -> None:
     split = {"train": len(prepared["y_train"]), "validation": len(prepared["y_val"]), "test": len(prepared["y_test"])}
     print("TV1 pipeline completed.")
     print(f"Processed rows: {len(prepared['processed_dataset'])}")
-    print("Target-month splits:")
+    print("Random row splits (seed=42):")
     for name, rows in split.items():
         print(f"  {name}: {rows} rows")
     print(f"Model features: {len(prepared['metadata']['feature_names'])}")

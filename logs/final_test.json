@@ -2,11 +2,18 @@
     "dataset": "customer_shopping_trends",
     "aggregation": "current_purchase_record",
     "target": "product_sales_amount_usd",
-    "test_period": "2018-06..2018-08",
+    "split_method": "random_70_15_15",
+    "test_split": "random_holdout_15_percent",
+    "test_rows": 585,
     "selected_run": "TREE003",
     "model": "DecisionTreeRegressorScratch",
     "params": {
         "max_depth": 4,
         "min_samples_split": 10
     },
-    "train_reference": 
+    "prediction_postprocessing": "clip_to_zero_for_nonnegative_purchase_amount",
+    "test_mae": 20.76801629832046,
+    "test_mse": 565.1857952668807,
+    "test_rmse": 23.77363655957752,
+    "test_r2": -0.01804981059778621
+}

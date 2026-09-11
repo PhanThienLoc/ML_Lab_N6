@@ -120,21 +120,9 @@ def main():
             )
         ),
         "split_method": "random_70_15_15",
-        "train_period": get_period(
-            source_metadata,
-            "train",
-            "2017-01..2018-02",
-        ),
-        "validation_period": get_period(
-            source_metadata,
-            "validation",
-            "2018-03..2018-05",
-        ),
-        "test_period": get_period(
-            source_metadata,
-            "test",
-            "2018-06..2018-08",
-        ),
+        "train_period": f"random_split_train_rows={len(y_train)}",
+        "validation_period": f"random_split_validation_rows={len(y_val)}",
+        "test_period": f"random_split_test_rows={len(y_test)}",
         "prediction_postprocessing": PREDICTION_POLICY_NAME,
     }
 
@@ -364,11 +352,12 @@ def main():
         "dataset": metadata["dataset"],
         "aggregation": metadata["aggregation"],
         "target": metadata["target"],
-        "test_period": metadata["test_period"],
+        "split_method": metadata["split_method"],
+        "test_split": "random_holdout_15_percent",
+        "test_rows": int(len(y_test)),
         "selected_run": best_config["run_id"],
         "model": best_config["model_name"],
         "params": best_config["params"],
-        "train_reference": prepared["split_frames"]["train"],
         "prediction_postprocessing": PREDICTION_POLICY_NAME,
         "test_mae": test_metrics["mae"],
         "test_mse": test_metrics["mse"],
@@ -403,6 +392,7 @@ def main():
         "selected_run": best_config["run_id"],
         "model_name": best_config["model_name"],
         "params": best_config["params"],
+        "train_reference": prepared["split_frames"]["train"],
     }
 
     with BEST_MODEL_PATH.open("wb") as file:
